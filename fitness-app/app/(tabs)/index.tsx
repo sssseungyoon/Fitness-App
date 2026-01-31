@@ -294,9 +294,10 @@ const exerciseList: any = [
   },
 ];
 
-interface WorkoutRow {
+interface Workout {
   rowId: number;
-  exerciseId: number | null;
+  name: string;
+  exercises: { rowId: number; exerciseId: number | null }[];
 }
 
 const MainView = () => {
@@ -304,15 +305,11 @@ const MainView = () => {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  interface workoutPlanRow {
-    rowId: number;
-    workoutRow: WorkoutRow | null;
-  }
-
-  const [workoutPlanRow, setWorkoutPlanRow] = useState<workoutPlanRow[]>([
+  const [workoutPlan, setWorkoutPlan] = useState([
     {
       rowId: Date.now(),
-      workoutRow: null,
+      name: "",
+      exercises: [{ rowId: Date.now(), exerciseId: null }],
     },
   ]);
 
@@ -344,50 +341,76 @@ const MainView = () => {
   }
 
   const removeWorkoutRow = (rowId: number) => {
-    if (workoutPlanRow.length <= 1) {
+    if (workoutPlan.length <= 1) {
       Alert.alert(
         "Error",
         "You need at least one workout for your workout plan"
       );
     } else {
-      setWorkoutPlanRow((prev) => prev.filter((row) => row.rowId !== rowId));
+      setWorkoutPlan((prev) => prev.filter((row) => row.rowId !== rowId));
     }
   };
 
   const addWorkoutRow = () => {
-    setWorkoutPlanRow([
-      ...workoutPlanRow,
-      { rowId: Date.now(), workoutRow: null },
+    setWorkoutPlan([
+      ...workoutPlan,
+      {
+        rowId: Date.now(),
+        name: "",
+        exercises: [{ rowId: Date.now() + 1, exerciseId: null }],
+      },
     ]);
   };
 
+  const workoutNameUpdate = (rowId: number, name: string) => {
+    setWorkoutPlan((prev) =>
+      prev.map((row) => (row.rowId === rowId ? { ...row, name: name } : row))
+    );
+  };
+
+  const workoutExerciseUpdate = (rowId: number, updatedExercises: any) => {
+    setWorkoutPlan((prev) =>
+      prev.map((row) =>
+        row.rowId === rowId ? { ...row, exercises: updatedExercises } : row
+      )
+    );
+  };
+
+  // upon onChange, the components must call the helper function along with the new value
   return (
-    <View>
-      <ScrollView>
-        {workoutPlanRow.map((workout) => (
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        {workoutPlan.map((workout) => (
           <View key={workout.rowId}>
-            <Workout exercises={exercises} />
+            <Workout
+              exerciseList={exercises}
+              data={workout}
+              nameUpdate={workoutNameUpdate}
+              exerciseUpdate={workoutExerciseUpdate}
+            />
             <TouchableOpacity
-              onPress={() => {
-                removeWorkoutRow(workout.rowId);
-              }}
+              style={styles.deleteWorkoutButton}
+              onPress={() => removeWorkoutRow(workout.rowId)}
             >
-              <Text>Delete a Workout</Text>
+              <Text style={styles.deleteWorkoutText}>Remove This Workout</Text>
             </TouchableOpacity>
           </View>
         ))}
       </ScrollView>
-      <View>
-        <TouchableOpacity onPress={addWorkoutRow}>
-          <Text>Add Another Workout</Text>
+
+      <View style={styles.footerActions}>
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={addWorkoutRow}
+        >
+          <Text style={styles.secondaryButtonText}>+ Add Another Workout</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.primaryButton, { marginTop: 12 }]}>
+          <Text style={styles.buttonText}>Save Complete Plan</Text>
         </TouchableOpacity>
       </View>
-      <View>
-        <TouchableOpacity>
-          <Text>Save the Workout</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -426,88 +449,71 @@ const DropdownComponent = ({
     </View>
   );
 };
-
-const NameField = () => {
-  const [value, setValue] = useState("");
-  return (
-    <View className="flex-1">
-      <Text>Name of the Workout: </Text>
-      <TextInput
-        value={value}
-        placeholder="Enter here..."
-        onChangeText={(text) => {
-          setValue(text);
-        }}
-      />
-    </View>
-  );
-};
-
-const Workout = ({ exercises }: any) => {
-  interface WorkoutRow {
-    rowId: number;
-    exerciseId: number | null;
-  }
-  const [workoutRows, setWorkoutRows] = useState<WorkoutRow[]>([
-    {
-      rowId: Date.now(),
-      exerciseId: null,
-    },
-  ]);
-
-  // This function is the "bridge"
+const Workout = ({ exerciseList, data, nameUpdate, exerciseUpdate }: any) => {
   const handleSelectExercise = (rowId: number, selectedId: number) => {
-    setWorkoutRows((prev) =>
-      prev.map((row) =>
-        row.rowId === rowId ? { ...row, exerciseId: selectedId } : row
-      )
+    const updatedExercises = data.exercises.map((row: any) =>
+      row.rowId === rowId ? { ...row, exerciseId: selectedId } : row
     );
+    exerciseUpdate(data.rowId, updatedExercises);
   };
 
   const addRow = () => {
-    setWorkoutRows([...workoutRows, { rowId: Date.now(), exerciseId: null }]);
+    const newExercises = [
+      ...data.exercises,
+      { rowId: Date.now(), exerciseId: null },
+    ];
+    exerciseUpdate(data.rowId, newExercises);
   };
 
   const removeRow = (rowId: number) => {
-    if (workoutRows.length <= 1) {
-      Alert.alert("Error", "You need at least one exercise in your workout");
+    if (data.exercises.length <= 1) {
+      Alert.alert("Error", "You need at least one exercise");
     } else {
-      setWorkoutRows((prev) => prev.filter((row) => row.rowId !== rowId));
+      const filtered = data.exercises.filter((row: any) => row.rowId !== rowId);
+      exerciseUpdate(data.rowId, filtered);
     }
   };
 
   return (
-    <View className="flex-1">
-      <NameField />
-      <ScrollView keyboardShouldPersistTaps="handled" className="flex-1">
-        {workoutRows.map((row) => (
-          <View key={row.rowId}>
+    <View style={styles.workoutCard}>
+      <Text style={styles.label}>Workout Name</Text>
+      <TextInput
+        style={styles.input}
+        value={data.name}
+        placeholder="e.g., Heavy Push Day"
+        placeholderTextColor="#999"
+        onChangeText={(text) => nameUpdate(data.rowId, text)}
+      />
+
+      <Text style={[styles.label, { marginTop: 10 }]}>Exercises</Text>
+      {data.exercises.map((row: any) => (
+        <View key={row.rowId} style={styles.exerciseRow}>
+          <View style={{ flex: 1 }}>
             <DropdownComponent
               labelField="name"
-              valueField="id" // Better to use ID for values
-              placeholder="Select an Exercise"
-              data={exercises}
-              onValueChange={(exerciseId: number) =>
-                handleSelectExercise(row.rowId, exerciseId)
+              valueField="id"
+              placeholder="Select Exercise"
+              data={exerciseList}
+              onValueChange={(id: number) =>
+                handleSelectExercise(row.rowId, id)
               }
             />
-            <TouchableOpacity
-              onPress={() => {
-                removeRow(row.rowId);
-              }}
-            >
-              <Text>Delete an Exercise</Text>
-            </TouchableOpacity>
           </View>
-        ))}
-      </ScrollView>
-      <TouchableOpacity onPress={addRow}>
-        <Text>Add Another Exercise</Text>
+          <TouchableOpacity
+            style={styles.inlineDeleteButton}
+            onPress={() => removeRow(row.rowId)}
+          >
+            <Text style={styles.deleteText}>✕</Text>
+          </TouchableOpacity>
+        </View>
+      ))}
+
+      <TouchableOpacity style={styles.addExerciseButton} onPress={addRow}>
+        <Text style={styles.addExerciseText}>+ Add Exercise</Text>
       </TouchableOpacity>
     </View>
   );
 };
-
 export default function Index() {
   const userDB = "userDatabase.db";
 
@@ -560,7 +566,7 @@ export default function Index() {
   };
 
   return (
-    <SafeAreaView>
+    <SafeAreaView style={{ flex: 1 }}>
       <SQLiteProvider
         databaseName={userDB}
         onInit={handleOnInit}
@@ -573,31 +579,129 @@ export default function Index() {
     </SafeAreaView>
   );
 }
+
 const styles = StyleSheet.create({
-  container: { padding: 16 },
-  dropdown: {
-    height: 50,
-    borderColor: "gray",
-    borderWidth: 0.5,
-    borderRadius: 8,
-    paddingHorizontal: 8,
+  container: {
+    flex: 1,
+    backgroundColor: "#F2F2F7", // Light grey background
   },
-  placeholderStyle: { fontSize: 16 },
-  selectedTextStyle: { fontSize: 16 },
-  footer: {
+  scrollContainer: {
     padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-    backgroundColor: "#fff",
   },
-  button: {
-    backgroundColor: "#2196F3",
-    padding: 15,
+  workoutCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    // Shadow for iOS
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    // Elevation for Android
+    elevation: 3,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#444",
+    marginBottom: 6,
+  },
+  input: {
+    height: 45,
+    borderWidth: 1,
+    borderColor: "#DDD",
     borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: 16,
+    backgroundColor: "#FAFAFA",
+    marginBottom: 10,
+  },
+  exerciseRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  dropdownContainer: {
+    flex: 1,
+  },
+  dropdown: {
+    height: 45,
+    borderColor: "#DDD",
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "#FFF",
+  },
+  inlineDeleteButton: {
+    padding: 10,
+    marginLeft: 8,
+    justifyContent: "center",
+  },
+  deleteText: {
+    color: "#FF3B30", // iOS Red
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  addExerciseButton: {
+    marginTop: 8,
+    padding: 10,
     alignItems: "center",
   },
+  addExerciseText: {
+    color: "#007AFF", // iOS Blue
+    fontWeight: "600",
+  },
+  deleteWorkoutButton: {
+    backgroundColor: "#FFF1F0",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#FFA39E",
+  },
+  deleteWorkoutText: {
+    color: "#CF1322",
+    fontWeight: "600",
+  },
+  footerActions: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: "#DDD",
+    backgroundColor: "#FFF",
+  },
+  primaryButton: {
+    backgroundColor: "#007AFF",
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  secondaryButton: {
+    backgroundColor: "#FFF",
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#007AFF",
+  },
   buttonText: {
-    color: "#fff",
+    color: "#FFF",
+    fontSize: 16,
     fontWeight: "bold",
+  },
+  secondaryButtonText: {
+    color: "#007AFF",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  placeholderStyle: {
+    fontSize: 16,
+    color: "#999",
+  },
+  selectedTextStyle: {
+    fontSize: 16,
+    color: "#000",
   },
 });
