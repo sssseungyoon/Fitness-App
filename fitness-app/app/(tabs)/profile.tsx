@@ -202,6 +202,7 @@ const ProfileView = () => {
         [form.firstName, form.lastName]
       );
       Alert.alert("Success", "User data saved successful");
+      setExistingUser({ ...existingUser, ...form });
       setForm({
         firstName: "",
         lastName: "",
@@ -265,7 +266,7 @@ const ProfileView = () => {
 
 const Profile = () => {
   // user database name
-  const userDB = "userDatabase.db";
+  const userDB = "userDatabase2.db";
   //   states
 
   const handleOnInit = async (db: SQLiteDatabase) => {

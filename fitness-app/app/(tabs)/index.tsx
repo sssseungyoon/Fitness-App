@@ -313,6 +313,51 @@ const MainView = () => {
     },
   ]);
 
+  const [savedWorkouts, setSavedWorkouts] = useState<any[]>([]);
+
+  const fetchSavedWorkouts = async () => {
+    try {
+      // This query joins the junction table with the exercise names
+      const result = await db.getAllAsync(`
+      SELECT 
+        w.id AS workoutId, 
+        w.name AS workoutName, 
+        e.name AS exerciseName
+      FROM Workouts w
+      LEFT JOIN Workout_Exercises we ON w.id = we.workout_id
+      LEFT JOIN Exercises e ON we.exercise_id = e.id
+      ORDER BY w.id DESC
+    `);
+
+      interface GroupedWorkout {
+        id: number;
+        name: string;
+        exercises: string[];
+      }
+
+      // Grouping the flat rows by Workout ID
+      const grouped = result.reduce<{ [key: number]: GroupedWorkout }>(
+        (acc: any, row: any) => {
+          const { workoutId, workoutName, exerciseName } = row;
+          if (!acc[workoutId]) {
+            acc[workoutId] = {
+              id: workoutId,
+              name: workoutName,
+              exercises: [],
+            };
+          }
+          if (exerciseName) acc[workoutId].exercises.push(exerciseName);
+          return acc;
+        },
+        {}
+      );
+
+      setSavedWorkouts(Object.values(grouped));
+    } catch (error) {
+      console.error("Fetch failed", error);
+    }
+  };
+
   useEffect(() => {
     const setupDatabase = async () => {
       try {
@@ -322,6 +367,7 @@ const MainView = () => {
           "SELECT * FROM Exercises"
         );
         setExercises(freshData);
+        fetchSavedWorkouts();
       } catch (e) {
         console.error("Setup failed", e);
       } finally {
@@ -376,10 +422,103 @@ const MainView = () => {
     );
   };
 
+  const SavedPlanCard = ({ workout, onDelete }: any) => (
+    <View style={styles.workoutCard}>
+      <View style={styles.savedCardHeader}>
+        <Text style={styles.savedWorkoutTitle}>{workout.name}</Text>
+        <TouchableOpacity onPress={() => onDelete(workout.id)}>
+          <Text style={styles.deleteIconText}>Remove</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.divider} />
+
+      {workout?.exercises?.map((ex: string, index: number) => (
+        <View key={index} style={styles.savedExerciseRow}>
+          <Text style={styles.bullet}>•</Text>
+          <Text style={styles.savedExerciseText}>{ex}</Text>
+        </View>
+      ))}
+    </View>
+  );
+
+  const handleOnSave = async () => {
+    try {
+      await db.withTransactionAsync(async () => {
+        for (const workout of workoutPlan) {
+          const result = await db.runAsync(
+            `INSERT INTO Workouts (name) VALUES (?)`,
+            [workout.name || "New Workout"]
+          );
+          const workoutId = result.lastInsertRowId;
+          for (const exercise of workout.exercises) {
+            if (exercise.exerciseId) {
+              await db.runAsync(
+                "INSERT INTO Workout_Exercises (workout_id, exercise_id) VALUES (?,?)",
+                [workoutId, exercise.exerciseId]
+              );
+            }
+          }
+        }
+      });
+      await fetchSavedWorkouts(); // Refetch data to update the 'savedWorkouts' state
+      // 2. RESET THE FORM
+      // We set it back to a fresh array with one empty workout and one empty exercise row
+      setWorkoutPlan([
+        {
+          rowId: Date.now(), // Unique ID for the new row
+          name: "",
+          exercises: [{ rowId: Date.now() + 1, exerciseId: null }],
+        },
+      ]);
+      Alert.alert("Success", "Your workout plan has been saved!");
+    } catch (exception) {
+      console.log(exception);
+      Alert.alert("Error", "Couldn't save your workout plan");
+    }
+  };
+
+  const deleteSavedWorkout = async (workoutId: number) => {
+    Alert.alert(
+      "Delete Workout",
+      "Are you sure you want to remove this saved plan?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // Delete the workout. foreign keys handle the rest!
+              await db.runAsync("DELETE FROM Workouts WHERE id = ?", [
+                workoutId,
+              ]);
+
+              // Refresh the UI
+              await fetchSavedWorkouts();
+            } catch (error) {
+              console.error("Delete failed", error);
+              Alert.alert("Error", "Could not delete workout.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   // upon onChange, the components must call the helper function along with the new value
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
+        {/* 1. DISPLAY SAVED WORKOUTS FROM DB */}
+        <Text>Saved Plans</Text>
+        {savedWorkouts.map((workout) => (
+          <SavedPlanCard
+            key={workout.id}
+            workout={workout}
+            onDelete={deleteSavedWorkout}
+          />
+        ))}
         {workoutPlan.map((workout) => (
           <View key={workout.rowId}>
             <Workout
@@ -406,7 +545,10 @@ const MainView = () => {
           <Text style={styles.secondaryButtonText}>+ Add Another Workout</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.primaryButton, { marginTop: 12 }]}>
+        <TouchableOpacity
+          style={[styles.primaryButton, { marginTop: 12 }]}
+          onPress={handleOnSave}
+        >
           <Text style={styles.buttonText}>Save Complete Plan</Text>
         </TouchableOpacity>
       </View>
@@ -420,22 +562,43 @@ const DropdownComponent = ({
   placeholder,
   data,
   onValueChange,
-}: {
-  labelField: string;
-  valueField: string;
-  placeholder: string;
-  data: any;
-  onValueChange: (val: any) => void;
-}) => {
+}: any) => {
   const [value, setValue] = useState(null);
 
+  const renderItem = (item: any) => {
+    // Find the index of the current item in the full list
+    const currentIndex = data.findIndex((i: any) => i.id === item.id);
+
+    // Check if the previous item had a different muscle group
+    const isNewSection =
+      currentIndex === 0 ||
+      data[currentIndex - 1].muscle_group !== item.muscle_group;
+
+    return (
+      <View>
+        {isNewSection && (
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionHeaderText}>
+              {item.muscle_group?.toUpperCase()}
+            </Text>
+          </View>
+        )}
+        <View style={styles.dropdownItem}>
+          <Text style={styles.itemTextMain}>{item.name}</Text>
+        </View>
+      </View>
+    );
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1 }}>
       <Dropdown
         style={styles.dropdown}
         placeholderStyle={styles.placeholderStyle}
         selectedTextStyle={styles.selectedTextStyle}
+        containerStyle={styles.dropdownListContainer} // Styles the actual popup list
         data={data}
+        maxHeight={400}
         labelField={labelField}
         valueField={valueField}
         placeholder={placeholder}
@@ -445,10 +608,12 @@ const DropdownComponent = ({
           setValue(val);
           onValueChange(val);
         }}
+        renderItem={renderItem}
       />
     </View>
   );
 };
+
 const Workout = ({ exerciseList, data, nameUpdate, exerciseUpdate }: any) => {
   const handleSelectExercise = (rowId: number, selectedId: number) => {
     const updatedExercises = data.exercises.map((row: any) =>
@@ -515,7 +680,7 @@ const Workout = ({ exerciseList, data, nameUpdate, exerciseUpdate }: any) => {
   );
 };
 export default function Index() {
-  const userDB = "userDatabase.db";
+  const userDB = "userDatabase2.db";
 
   const handleOnInit = async (db: SQLiteDatabase) => {
     try {
@@ -703,5 +868,72 @@ const styles = StyleSheet.create({
   selectedTextStyle: {
     fontSize: 16,
     color: "#000",
+  },
+  savedWorkoutTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#1C1C1E",
+    marginBottom: 8,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#EEE",
+    marginBottom: 12,
+  },
+  savedExerciseRow: {
+    flexDirection: "row",
+    marginBottom: 4,
+    alignItems: "center",
+  },
+  bullet: {
+    fontSize: 18,
+    color: "#007AFF",
+    marginRight: 8,
+    width: 10,
+  },
+  savedExerciseText: {
+    fontSize: 16,
+    color: "#3A3A3C",
+  },
+  emptyText: {
+    fontStyle: "italic",
+    color: "#8E8E93",
+  },
+  sectionHeader: {
+    backgroundColor: "#F2F2F7", // Light grey background for the header
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E5EA",
+  },
+  sectionHeaderText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#8E8E93",
+    letterSpacing: 1,
+  },
+  dropdownItem: {
+    padding: 15,
+    backgroundColor: "#FFF",
+  },
+  dropdownListContainer: {
+    borderRadius: 12,
+    overflow: "hidden",
+    marginTop: 4,
+  },
+  itemTextMain: {
+    fontSize: 16,
+    color: "#000",
+  },
+  savedCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  deleteIconText: {
+    color: "#FF3B30",
+    fontSize: 14,
+    fontWeight: "600",
   },
 });
