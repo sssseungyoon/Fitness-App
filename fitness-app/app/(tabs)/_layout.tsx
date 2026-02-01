@@ -1,4 +1,3 @@
-import { View, Text } from "react-native";
 import React from "react";
 import { Tabs } from "expo-router";
 
@@ -19,13 +18,18 @@ const _layout = () => {
           headerShown: false,
         }}
       />
-
       <Tabs.Screen
         name="profile"
         options={{
           title: "User Profile",
           headerTitleAlign: "center",
           tabBarLabel: "Profile",
+        }}
+      />
+      <Tabs.Screen
+        name="edit-workout"
+        options={{
+          href: null, // Hide from tab bar - accessed via modal
         }}
       />
     </Tabs>

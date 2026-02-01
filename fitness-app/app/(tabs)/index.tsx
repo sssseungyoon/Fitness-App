@@ -1,686 +1,745 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "expo-router";
 import { SQLiteDatabase, SQLiteProvider, useSQLiteContext } from "expo-sqlite";
+import { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
   Text,
   TextInput,
-  View,
-  StyleSheet,
-  ActivityIndicator,
-  ScrollView,
   TouchableOpacity,
-  Alert,
+  View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Dropdown } from "react-native-element-dropdown";
-import { useEffect, useState } from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-const bulkImportExercises = async (db: SQLiteDatabase, exerciseList: any[]) => {
-  try {
-    await db.withTransactionAsync(async () => {
-      for (const ex of exerciseList) {
-        await db.runAsync(
-          "INSERT OR IGNORE INTO Exercises (name, muscle_group, equipment_type) VALUES (?, ?, ?)",
-          [
-            ex.name || "", // Fallback to empty string
-            ex.muscle_group ?? null, // Use null instead of undefined
-            ex.equipment_type ?? null, // Use null instead of undefined
-          ]
-        );
-      }
-    });
-    console.log(`${exerciseList.length} exercises checked/imported!`);
-  } catch (error) {
-    console.error("Bulk import failed:", error);
-  }
-};
+const DRAFT_STORAGE_KEY = "workout_draft";
 
-interface Exercise {
+interface SetData {
+  setNumber: number;
+  weight: number;
+  reps: number;
+  halfReps: number;
+}
+
+interface PreviousSetData {
+  setNumber: number;
+  weight: number;
+  reps: number;
+  halfReps: number;
+  date: string;
+}
+
+interface ExerciseRecord {
+  exerciseId: number;
+  exerciseName: string;
+  equipmentType: string;
+  sets: SetData[];
+  previousSets: PreviousSetData[];
+}
+
+interface SavedWorkout {
   id: number;
   name: string;
-  muscle_group: string;
-  equipment_type: string;
+  exercises: { id: number; name: string; equipment_type: string }[];
 }
-const exerciseList: any = [
-  // --- CHEST ---
-  { name: "Bench Press", muscle_group: "chest", equipment_type: "free-weight" },
-  {
-    name: "Incline Bench Press",
-    muscle_group: "chest",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Decline Bench Press",
-    muscle_group: "chest",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Dumbbell Chest Press",
-    muscle_group: "chest",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Incline Dumbbell Press",
-    muscle_group: "chest",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Dumbbell Chest Fly",
-    muscle_group: "chest",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Machine Chest Press",
-    muscle_group: "chest",
-    equipment_type: "machine",
-  },
-  {
-    name: "Machine Chest Fly",
-    muscle_group: "chest",
-    equipment_type: "machine",
-  },
-  { name: "Pec Deck", muscle_group: "chest", equipment_type: "machine" },
-  {
-    name: "Cable Chest Press",
-    muscle_group: "chest",
-    equipment_type: "machine",
-  },
-  { name: "Push-Up", muscle_group: "chest", equipment_type: "bodyweight" },
-  { name: "Dips", muscle_group: "chest", equipment_type: "bodyweight" },
 
-  // --- SHOULDERS ---
-  {
-    name: "Overhead Press",
-    muscle_group: "shoulders",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Dumbbell Shoulder Press",
-    muscle_group: "shoulders",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Arnold Press",
-    muscle_group: "shoulders",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Dumbbell Lateral Raise",
-    muscle_group: "shoulders",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Dumbbell Front Raise",
-    muscle_group: "shoulders",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Dumbbell Rear Delt Row",
-    muscle_group: "shoulders",
-    equipment_type: "free-weight",
-  },
-  { name: "Face Pull", muscle_group: "shoulders", equipment_type: "machine" },
-  {
-    name: "Cable Lateral Raise",
-    muscle_group: "shoulders",
-    equipment_type: "machine",
-  },
-  {
-    name: "Machine Shoulder Press",
-    muscle_group: "shoulders",
-    equipment_type: "machine",
-  },
-  {
-    name: "Push Press",
-    muscle_group: "shoulders",
-    equipment_type: "free-weight",
-  },
+// Number Input with +/- buttons and manual text entry
+const NumberInput = ({
+  value,
+  onChange,
+  step = 1,
+  unit,
+  label,
+  min = 0,
+  max = 9999,
+  isInteger = false,
+}: {
+  value: number;
+  onChange: (val: number) => void;
+  step?: number;
+  unit?: string;
+  label: string;
+  min?: number;
+  max?: number;
+  isInteger?: boolean;
+}) => {
+  const [textValue, setTextValue] = useState(
+    isInteger ? value.toString() : value.toFixed(1)
+  );
 
-  // --- BICEPS ---
-  { name: "Barbell Curl", muscle_group: "arms", equipment_type: "free-weight" },
-  {
-    name: "Dumbbell Curl",
-    muscle_group: "arms",
-    equipment_type: "free-weight",
-  },
-  { name: "Hammer Curl", muscle_group: "arms", equipment_type: "free-weight" },
-  {
-    name: "Incline Dumbbell Curl",
-    muscle_group: "arms",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Preacher Curl",
-    muscle_group: "arms",
-    equipment_type: "free-weight",
-  },
-  { name: "Cable Curl", muscle_group: "arms", equipment_type: "machine" },
-  {
-    name: "Machine Bicep Curl",
-    muscle_group: "arms",
-    equipment_type: "machine",
-  },
+  // Sync text value when external value changes
+  useEffect(() => {
+    setTextValue(isInteger ? value.toString() : value.toFixed(1));
+  }, [value, isInteger]);
 
-  // --- TRICEPS ---
-  {
-    name: "Tricep Pushdown (Bar)",
-    muscle_group: "arms",
-    equipment_type: "machine",
-  },
-  {
-    name: "Tricep Pushdown (Rope)",
-    muscle_group: "arms",
-    equipment_type: "machine",
-  },
-  {
-    name: "Skull Crushers",
-    muscle_group: "arms",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Overhead Cable Extension",
-    muscle_group: "arms",
-    equipment_type: "machine",
-  },
-  {
-    name: "Dumbbell Overhead Extension",
-    muscle_group: "arms",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Close-Grip Bench Press",
-    muscle_group: "arms",
-    equipment_type: "free-weight",
-  },
-  { name: "Bench Dip", muscle_group: "arms", equipment_type: "bodyweight" },
+  const increment = () => {
+    const newVal = Math.min(max, value + step);
+    onChange(Number(newVal.toFixed(1)));
+  };
 
-  // --- LEGS ---
-  { name: "Squat", muscle_group: "legs", equipment_type: "free-weight" },
-  { name: "Front Squat", muscle_group: "legs", equipment_type: "free-weight" },
-  { name: "Leg Press", muscle_group: "legs", equipment_type: "machine" },
-  { name: "Leg Extension", muscle_group: "legs", equipment_type: "machine" },
-  { name: "Lying Leg Curl", muscle_group: "legs", equipment_type: "machine" },
-  { name: "Seated Leg Curl", muscle_group: "legs", equipment_type: "machine" },
-  {
-    name: "Romanian Deadlift",
-    muscle_group: "legs",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Bulgarian Split Squat",
-    muscle_group: "legs",
-    equipment_type: "free-weight",
-  },
-  { name: "Goblet Squat", muscle_group: "legs", equipment_type: "free-weight" },
-  { name: "Lunges", muscle_group: "legs", equipment_type: "free-weight" },
-  { name: "Hack Squat", muscle_group: "legs", equipment_type: "machine" },
+  const decrement = () => {
+    const newVal = Math.max(min, value - step);
+    onChange(Number(newVal.toFixed(1)));
+  };
 
-  // --- BACK ---
-  { name: "Deadlift", muscle_group: "back", equipment_type: "free-weight" },
-  { name: "Pull-Up", muscle_group: "back", equipment_type: "bodyweight" },
-  { name: "Chin-Up", muscle_group: "back", equipment_type: "bodyweight" },
-  { name: "Lat Pulldown", muscle_group: "back", equipment_type: "machine" },
-  { name: "Barbell Row", muscle_group: "back", equipment_type: "free-weight" },
-  { name: "Dumbbell Row", muscle_group: "back", equipment_type: "free-weight" },
-  { name: "Seated Cable Row", muscle_group: "back", equipment_type: "machine" },
-  { name: "T-Bar Row", muscle_group: "back", equipment_type: "free-weight" },
-  {
-    name: "Bent Over Row",
-    muscle_group: "back",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Back Extension",
-    muscle_group: "back",
-    equipment_type: "bodyweight",
-  },
+  const handleTextChange = (text: string) => {
+    // Allow empty string, numbers, and one decimal point
+    if (isInteger) {
+      // Only allow digits
+      if (/^\d*$/.test(text)) {
+        setTextValue(text);
+      }
+    } else {
+      // Allow digits and one decimal point
+      if (/^\d*\.?\d*$/.test(text)) {
+        setTextValue(text);
+      }
+    }
+  };
 
-  // --- GLUTES ---
-  { name: "Hip Thrust", muscle_group: "glutes", equipment_type: "free-weight" },
-  {
-    name: "Glute Bridge",
-    muscle_group: "glutes",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Cable Glute Kickback",
-    muscle_group: "glutes",
-    equipment_type: "machine",
-  },
-  {
-    name: "Hip Abduction Machine",
-    muscle_group: "glutes",
-    equipment_type: "machine",
-  },
+  const handleBlur = () => {
+    const num = parseFloat(textValue);
+    if (!isNaN(num) && num >= min && num <= max) {
+      // Round to step precision
+      const rounded = isInteger
+        ? Math.round(num)
+        : Math.round(num / step) * step;
+      const clamped = Math.max(min, Math.min(max, rounded));
+      onChange(Number(clamped.toFixed(1)));
+      setTextValue(isInteger ? clamped.toString() : clamped.toFixed(1));
+    } else {
+      // Reset to current value if invalid
+      setTextValue(isInteger ? value.toString() : value.toFixed(1));
+    }
+  };
 
-  // --- ABS ---
-  { name: "Plank", muscle_group: "abs", equipment_type: "bodyweight" },
-  { name: "Crunch", muscle_group: "abs", equipment_type: "bodyweight" },
-  { name: "Leg Raise", muscle_group: "abs", equipment_type: "bodyweight" },
-  {
-    name: "Hanging Leg Raise",
-    muscle_group: "abs",
-    equipment_type: "bodyweight",
-  },
-  { name: "Cable Crunch", muscle_group: "abs", equipment_type: "machine" },
-  { name: "Russian Twist", muscle_group: "abs", equipment_type: "free-weight" },
-  { name: "Bicycle Crunch", muscle_group: "abs", equipment_type: "bodyweight" },
+  return (
+    <View className="flex-row items-center justify-between py-2">
+      <Text className="text-gray-600 text-sm w-16">{label}</Text>
+      <View className="flex-row items-center">
+        <TouchableOpacity
+          onPress={decrement}
+          className="w-12 h-12 bg-gray-200 rounded-l-lg items-center justify-center"
+        >
+          <Text className="text-2xl font-bold text-gray-700">−</Text>
+        </TouchableOpacity>
+        <TextInput
+          value={textValue}
+          onChangeText={handleTextChange}
+          onBlur={handleBlur}
+          keyboardType={isInteger ? "number-pad" : "decimal-pad"}
+          selectTextOnFocus
+          style={{
+            width: 70,
+            height: 48,
+            backgroundColor: "white",
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
+            borderColor: "#E5E5E5",
+            textAlign: "center",
+            fontSize: 18,
+            fontWeight: "600",
+            paddingVertical: 0,
+          }}
+        />
+        <TouchableOpacity
+          onPress={increment}
+          className="w-12 h-12 bg-blue-500 rounded-r-lg items-center justify-center"
+        >
+          <Text className="text-2xl font-bold text-white">+</Text>
+        </TouchableOpacity>
+        {unit && <Text className="text-gray-600 ml-2 w-10">{unit}</Text>}
+      </View>
+    </View>
+  );
+};
 
-  // --- CALVES ---
-  {
-    name: "Standing Calf Raise",
-    muscle_group: "calves",
-    equipment_type: "machine",
-  },
-  {
-    name: "Seated Calf Raise",
-    muscle_group: "calves",
-    equipment_type: "machine",
-  },
-  {
-    name: "Calf Raise in Leg Press",
-    muscle_group: "calves",
-    equipment_type: "machine",
-  },
+// Set Row Component
+const SetRow = ({
+  setData,
+  setIndex,
+  equipmentType,
+  weightUnit,
+  onUpdate,
+  onRemove,
+  canRemove,
+}: {
+  setData: SetData;
+  setIndex: number;
+  equipmentType: string;
+  weightUnit: "kg" | "lbs";
+  onUpdate: (updated: SetData) => void;
+  onRemove: () => void;
+  canRemove: boolean;
+}) => {
+  // Calculate weight increment based on unit and equipment type
+  const getWeightStep = () => {
+    if (weightUnit === "kg") {
+      return 1;
+    } else {
+      return equipmentType === "machine" ? 5 : 2.5;
+    }
+  };
 
-  // --- FOREARMS ---
-  {
-    name: "Barbell Wrist Curl",
-    muscle_group: "forearms",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Farmers Walk",
-    muscle_group: "forearms",
-    equipment_type: "free-weight",
-  },
-];
+  const weightStep = getWeightStep();
 
-interface Workout {
-  rowId: number;
-  name: string;
-  exercises: { rowId: number; exerciseId: number | null }[];
-}
+  return (
+    <View className="bg-gray-50 rounded-lg p-3 mb-2">
+      <View className="flex-row justify-between items-center mb-2">
+        <Text className="font-semibold text-gray-800">Set {setIndex + 1}</Text>
+        {canRemove && (
+          <TouchableOpacity onPress={onRemove}>
+            <Text className="text-red-500 text-sm">Remove</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <NumberInput
+        label="Weight"
+        value={setData.weight}
+        step={weightStep}
+        unit={weightUnit}
+        isInteger={weightUnit === "kg"}
+        onChange={(val) => onUpdate({ ...setData, weight: val })}
+      />
+
+      <NumberInput
+        label="Reps"
+        value={setData.reps}
+        step={1}
+        max={100}
+        isInteger={true}
+        onChange={(val) => onUpdate({ ...setData, reps: Math.floor(val) })}
+      />
+
+      <NumberInput
+        label="Half"
+        value={setData.halfReps}
+        step={1}
+        max={50}
+        isInteger={true}
+        onChange={(val) => onUpdate({ ...setData, halfReps: Math.floor(val) })}
+      />
+    </View>
+  );
+};
+
+// Exercise Card Component
+const ExerciseCard = ({
+  exercise,
+  weightUnit,
+  onUpdate,
+}: {
+  exercise: ExerciseRecord;
+  weightUnit: "kg" | "lbs";
+  onUpdate: (updated: ExerciseRecord) => void;
+}) => {
+  const addSet = () => {
+    const lastSet = exercise.sets[exercise.sets.length - 1];
+    const newSet: SetData = {
+      setNumber: exercise.sets.length + 1,
+      weight: lastSet?.weight || 0,
+      reps: lastSet?.reps || 0,
+      halfReps: 0,
+    };
+    onUpdate({ ...exercise, sets: [...exercise.sets, newSet] });
+  };
+
+  const updateSet = (setIndex: number, updated: SetData) => {
+    const newSets = [...exercise.sets];
+    newSets[setIndex] = updated;
+    onUpdate({ ...exercise, sets: newSets });
+  };
+
+  const removeSet = (setIndex: number) => {
+    const newSets = exercise.sets.filter((_, i) => i !== setIndex);
+    newSets.forEach((set, i) => (set.setNumber = i + 1));
+    onUpdate({ ...exercise, sets: newSets });
+  };
+
+  // Format date for display
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  return (
+    <View className="bg-white rounded-xl p-4 mb-4 shadow-sm">
+      <Text className="text-lg font-bold text-gray-800 mb-1">
+        {exercise.exerciseName}
+      </Text>
+      <Text className="text-xs text-gray-500 mb-3 capitalize">
+        {exercise.equipmentType}
+      </Text>
+
+      {/* Previous Records Section */}
+      {exercise.previousSets.length > 0 && (
+        <View className="bg-amber-50 rounded-lg p-3 mb-3 border border-amber-200">
+          <Text className="text-sm font-semibold text-amber-800 mb-2">
+            Previous ({formatDate(exercise.previousSets[0].date)})
+          </Text>
+          <View className="flex-row flex-wrap">
+            {exercise.previousSets.map((prevSet, idx) => (
+              <View
+                key={idx}
+                className="bg-white rounded px-2 py-1 mr-2 mb-1 border border-amber-300"
+              >
+                <Text className="text-xs text-gray-600">
+                  Set {prevSet.setNumber}: {prevSet.weight}
+                  {weightUnit} × {prevSet.reps}
+                  {prevSet.halfReps > 0 ? ` + ${prevSet.halfReps}½` : ""}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Current Sets Input */}
+      {exercise.sets.map((set, index) => (
+        <SetRow
+          key={index}
+          setData={set}
+          setIndex={index}
+          equipmentType={exercise.equipmentType}
+          weightUnit={weightUnit}
+          onUpdate={(updated) => updateSet(index, updated)}
+          onRemove={() => removeSet(index)}
+          canRemove={exercise.sets.length > 1}
+        />
+      ))}
+
+      <TouchableOpacity
+        onPress={addSet}
+        className="py-2 items-center border-t border-gray-200 mt-2"
+      >
+        <Text className="text-blue-500 font-semibold">+ Add Set</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+// Unit Toggle Component
+const UnitToggle = ({
+  unit,
+  onToggle,
+}: {
+  unit: "kg" | "lbs";
+  onToggle: () => void;
+}) => (
+  <View className="flex-row items-center justify-center mb-4">
+    <Text className="text-gray-600 mr-3">Weight Unit:</Text>
+    <TouchableOpacity
+      onPress={onToggle}
+      className="flex-row bg-gray-200 rounded-full p-1"
+    >
+      <View
+        className={`px-4 py-2 rounded-full ${
+          unit === "kg" ? "bg-blue-500" : "bg-transparent"
+        }`}
+      >
+        <Text
+          className={`font-semibold ${
+            unit === "kg" ? "text-white" : "text-gray-600"
+          }`}
+        >
+          kg
+        </Text>
+      </View>
+      <View
+        className={`px-4 py-2 rounded-full ${
+          unit === "lbs" ? "bg-blue-500" : "bg-transparent"
+        }`}
+      >
+        <Text
+          className={`font-semibold ${
+            unit === "lbs" ? "text-white" : "text-gray-600"
+          }`}
+        >
+          lbs
+        </Text>
+      </View>
+    </TouchableOpacity>
+  </View>
+);
 
 const MainView = () => {
   const db = useSQLiteContext();
-  const [exercises, setExercises] = useState<Exercise[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [savedWorkouts, setSavedWorkouts] = useState<SavedWorkout[]>([]);
+  const [selectedWorkout, setSelectedWorkout] = useState<SavedWorkout | null>(
+    null
+  );
+  const [exerciseRecords, setExerciseRecords] = useState<ExerciseRecord[]>([]);
+  const [weightUnit, setWeightUnit] = useState<"kg" | "lbs">("kg");
+  const [draftLoaded, setDraftLoaded] = useState(false);
 
-  const [workoutPlan, setWorkoutPlan] = useState([
-    {
-      rowId: Date.now(),
-      name: "",
-      exercises: [{ rowId: Date.now(), exerciseId: null }],
-    },
-  ]);
+  // Load saved draft on mount
+  useEffect(() => {
+    const loadDraft = async () => {
+      try {
+        const draftJson = await AsyncStorage.getItem(DRAFT_STORAGE_KEY);
+        if (draftJson) {
+          const draft = JSON.parse(draftJson);
+          if (draft.selectedWorkout && draft.exerciseRecords) {
+            setSelectedWorkout(draft.selectedWorkout);
+            setExerciseRecords(draft.exerciseRecords);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load draft:", error);
+      } finally {
+        setDraftLoaded(true);
+      }
+    };
+    loadDraft();
+  }, []);
 
-  const [savedWorkouts, setSavedWorkouts] = useState<any[]>([]);
+  // Auto-save draft whenever workout data changes
+  useEffect(() => {
+    if (!draftLoaded) return; // Don't save until initial load is complete
 
-  const fetchSavedWorkouts = async () => {
+    const saveDraft = async () => {
+      try {
+        if (selectedWorkout && exerciseRecords.length > 0) {
+          const draft = {
+            selectedWorkout,
+            exerciseRecords,
+            savedAt: new Date().toISOString(),
+          };
+          await AsyncStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+        }
+      } catch (error) {
+        console.error("Failed to save draft:", error);
+      }
+    };
+    saveDraft();
+  }, [selectedWorkout, exerciseRecords, draftLoaded]);
+
+  // Clear draft from storage
+  const clearDraft = async () => {
     try {
-      // This query joins the junction table with the exercise names
-      const result = await db.getAllAsync(`
-      SELECT 
-        w.id AS workoutId, 
-        w.name AS workoutName, 
-        e.name AS exerciseName
-      FROM Workouts w
-      LEFT JOIN Workout_Exercises we ON w.id = we.workout_id
-      LEFT JOIN Exercises e ON we.exercise_id = e.id
-      ORDER BY w.id DESC
-    `);
+      await AsyncStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch (error) {
+      console.error("Failed to clear draft:", error);
+    }
+  };
 
-      interface GroupedWorkout {
-        id: number;
-        name: string;
-        exercises: string[];
+  // Fetch saved workouts
+  const fetchWorkouts = useCallback(async () => {
+    try {
+      // Fetch user's weight unit preference
+      const user = await db.getFirstAsync<{ weight_unit: string }>(
+        "SELECT weight_unit FROM users LIMIT 1"
+      );
+      if (user?.weight_unit) {
+        setWeightUnit(user.weight_unit as "kg" | "lbs");
       }
 
-      // Grouping the flat rows by Workout ID
-      const grouped = result.reduce<{ [key: number]: GroupedWorkout }>(
-        (acc: any, row: any) => {
-          const { workoutId, workoutName, exerciseName } = row;
-          if (!acc[workoutId]) {
-            acc[workoutId] = {
-              id: workoutId,
-              name: workoutName,
-              exercises: [],
-            };
-          }
-          if (exerciseName) acc[workoutId].exercises.push(exerciseName);
-          return acc;
-        },
-        {}
-      );
+      // Fetch saved workouts with their exercises
+      const result = await db.getAllAsync<{
+        workoutId: number;
+        workoutName: string;
+        exerciseId: number;
+        exerciseName: string;
+        equipmentType: string;
+      }>(`
+        SELECT
+          w.id AS workoutId,
+          w.name AS workoutName,
+          e.id AS exerciseId,
+          e.name AS exerciseName,
+          e.equipment_type AS equipmentType
+        FROM Workouts w
+        LEFT JOIN Workout_Exercises we ON w.id = we.workout_id
+        LEFT JOIN Exercises e ON we.exercise_id = e.id
+        ORDER BY w.id DESC
+      `);
+
+      // Group by workout
+      const grouped: { [key: number]: SavedWorkout } = {};
+      result.forEach((row) => {
+        if (!grouped[row.workoutId]) {
+          grouped[row.workoutId] = {
+            id: row.workoutId,
+            name: row.workoutName,
+            exercises: [],
+          };
+        }
+        if (row.exerciseId) {
+          grouped[row.workoutId].exercises.push({
+            id: row.exerciseId,
+            name: row.exerciseName,
+            equipment_type: row.equipmentType,
+          });
+        }
+      });
 
       setSavedWorkouts(Object.values(grouped));
     } catch (error) {
-      console.error("Fetch failed", error);
+      console.error("Failed to fetch workouts:", error);
+    } finally {
+      setIsLoading(false);
     }
-  };
-
-  useEffect(() => {
-    const setupDatabase = async () => {
-      try {
-        // 2. Only import if the table is empty
-        await bulkImportExercises(db, exerciseList);
-        const freshData = await db.getAllAsync<Exercise>(
-          "SELECT * FROM Exercises"
-        );
-        setExercises(freshData);
-        fetchSavedWorkouts();
-      } catch (e) {
-        console.error("Setup failed", e);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    setupDatabase();
   }, [db]);
 
-  if (isLoading) {
-    return (
-      <View className="flex-1 justify-center ">
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
-    );
-  }
-
-  const removeWorkoutRow = (rowId: number) => {
-    if (workoutPlan.length <= 1) {
-      Alert.alert(
-        "Error",
-        "You need at least one workout for your workout plan"
-      );
-    } else {
-      setWorkoutPlan((prev) => prev.filter((row) => row.rowId !== rowId));
-    }
-  };
-
-  const addWorkoutRow = () => {
-    setWorkoutPlan([
-      ...workoutPlan,
-      {
-        rowId: Date.now(),
-        name: "",
-        exercises: [{ rowId: Date.now() + 1, exerciseId: null }],
-      },
-    ]);
-  };
-
-  const workoutNameUpdate = (rowId: number, name: string) => {
-    setWorkoutPlan((prev) =>
-      prev.map((row) => (row.rowId === rowId ? { ...row, name: name } : row))
-    );
-  };
-
-  const workoutExerciseUpdate = (rowId: number, updatedExercises: any) => {
-    setWorkoutPlan((prev) =>
-      prev.map((row) =>
-        row.rowId === rowId ? { ...row, exercises: updatedExercises } : row
-      )
-    );
-  };
-
-  const SavedPlanCard = ({ workout, onDelete }: any) => (
-    <View style={styles.workoutCard}>
-      <View style={styles.savedCardHeader}>
-        <Text style={styles.savedWorkoutTitle}>{workout.name}</Text>
-        <TouchableOpacity onPress={() => onDelete(workout.id)}>
-          <Text style={styles.deleteIconText}>Remove</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.divider} />
-
-      {workout?.exercises?.map((ex: string, index: number) => (
-        <View key={index} style={styles.savedExerciseRow}>
-          <Text style={styles.bullet}>•</Text>
-          <Text style={styles.savedExerciseText}>{ex}</Text>
-        </View>
-      ))}
-    </View>
+  // Refresh workouts when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchWorkouts();
+    }, [fetchWorkouts])
   );
 
-  const handleOnSave = async () => {
-    try {
-      await db.withTransactionAsync(async () => {
-        for (const workout of workoutPlan) {
-          const result = await db.runAsync(
-            `INSERT INTO Workouts (name) VALUES (?)`,
-            [workout.name || "New Workout"]
+  // When workout is selected, load exercises and previous records
+  const handleWorkoutSelect = async (workout: SavedWorkout) => {
+    setSelectedWorkout(workout);
+
+    const records: ExerciseRecord[] = await Promise.all(
+      workout.exercises.map(async (ex) => {
+        // Get the most recent date for this exercise
+        const lastSession = await db.getFirstAsync<{ date: string }>(
+          `SELECT date FROM Records WHERE exercise_id = ? ORDER BY date DESC LIMIT 1`,
+          [ex.id]
+        );
+
+        let previousSets: PreviousSetData[] = [];
+
+        if (lastSession?.date) {
+          // Get all sets from the most recent session
+          const prevRecords = await db.getAllAsync<{
+            set_number: number;
+            weight: number;
+            reps: number;
+            half_reps: number;
+            date: string;
+          }>(
+            `SELECT set_number, weight, reps, half_reps, date
+             FROM Records
+             WHERE exercise_id = ? AND date = ?
+             ORDER BY set_number ASC`,
+            [ex.id, lastSession.date]
           );
-          const workoutId = result.lastInsertRowId;
-          for (const exercise of workout.exercises) {
-            if (exercise.exerciseId) {
-              await db.runAsync(
-                "INSERT INTO Workout_Exercises (workout_id, exercise_id) VALUES (?,?)",
-                [workoutId, exercise.exerciseId]
-              );
-            }
-          }
+
+          previousSets = prevRecords.map((r) => ({
+            setNumber: r.set_number,
+            weight: r.weight || 0,
+            reps: r.reps || 0,
+            halfReps: r.half_reps || 0,
+            date: r.date,
+          }));
         }
-      });
-      await fetchSavedWorkouts(); // Refetch data to update the 'savedWorkouts' state
-      // 2. RESET THE FORM
-      // We set it back to a fresh array with one empty workout and one empty exercise row
-      setWorkoutPlan([
-        {
-          rowId: Date.now(), // Unique ID for the new row
-          name: "",
-          exercises: [{ rowId: Date.now() + 1, exerciseId: null }],
-        },
+
+        // Pre-fill current set with the first previous set's values
+        const firstPrevSet = previousSets[0];
+
+        return {
+          exerciseId: ex.id,
+          exerciseName: ex.name,
+          equipmentType: ex.equipment_type,
+          sets: [
+            {
+              setNumber: 1,
+              weight: firstPrevSet?.weight || 0,
+              reps: firstPrevSet?.reps || 0,
+              halfReps: firstPrevSet?.halfReps || 0,
+            },
+          ],
+          previousSets,
+        };
+      })
+    );
+
+    setExerciseRecords(records);
+  };
+
+  // Toggle weight unit and save preference
+  const toggleWeightUnit = async () => {
+    const newUnit = weightUnit === "kg" ? "lbs" : "kg";
+    setWeightUnit(newUnit);
+
+    try {
+      await db.runAsync("UPDATE users SET weight_unit = ? WHERE id = 1", [
+        newUnit,
       ]);
-      Alert.alert("Success", "Your workout plan has been saved!");
-    } catch (exception) {
-      console.log(exception);
-      Alert.alert("Error", "Couldn't save your workout plan");
+    } catch (error) {
+      console.error("Failed to save weight unit:", error);
     }
   };
 
-  const deleteSavedWorkout = async (workoutId: number) => {
+  // Update exercise record
+  const updateExercise = (index: number, updated: ExerciseRecord) => {
+    const newRecords = [...exerciseRecords];
+    newRecords[index] = updated;
+    setExerciseRecords(newRecords);
+  };
+
+  // Go back to workout selection (keeps draft saved)
+  const handleBack = () => {
+    setSelectedWorkout(null);
+    // Don't clear exerciseRecords - they're auto-saved as draft
+  };
+
+  // Discard current draft and start fresh
+  const handleDiscardDraft = () => {
     Alert.alert(
-      "Delete Workout",
-      "Are you sure you want to remove this saved plan?",
+      "Discard Draft",
+      "Are you sure you want to discard your current workout progress?",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Delete",
+          text: "Discard",
           style: "destructive",
           onPress: async () => {
-            try {
-              // Delete the workout. foreign keys handle the rest!
-              await db.runAsync("DELETE FROM Workouts WHERE id = ?", [
-                workoutId,
-              ]);
-
-              // Refresh the UI
-              await fetchSavedWorkouts();
-            } catch (error) {
-              console.error("Delete failed", error);
-              Alert.alert("Error", "Could not delete workout.");
-            }
+            await clearDraft();
+            setSelectedWorkout(null);
+            setExerciseRecords([]);
           },
         },
       ]
     );
   };
 
-  // upon onChange, the components must call the helper function along with the new value
+  // Save all records
+  const handleSave = async () => {
+    if (!selectedWorkout) {
+      Alert.alert("Error", "No workout selected");
+      return;
+    }
+
+    if (exerciseRecords.length === 0) {
+      Alert.alert("Error", "No exercises to save");
+      return;
+    }
+
+    try {
+      await db.withTransactionAsync(async () => {
+        const date = new Date().toISOString();
+
+        for (const exercise of exerciseRecords) {
+          for (const set of exercise.sets) {
+            await db.runAsync(
+              `INSERT INTO Records (date, workout_id, exercise_id, weight, set_number, reps, half_reps)
+               VALUES (?, ?, ?, ?, ?, ?, ?)`,
+              [
+                date,
+                selectedWorkout.id,
+                exercise.exerciseId,
+                set.weight,
+                set.setNumber,
+                set.reps,
+                set.halfReps,
+              ]
+            );
+          }
+        }
+      });
+
+      // Clear draft after successful save
+      await clearDraft();
+
+      Alert.alert("Success", "Workout recorded!");
+      setSelectedWorkout(null);
+      setExerciseRecords([]);
+    } catch (error: any) {
+      console.error("Failed to save:", error);
+      Alert.alert("Error", `Failed to save workout: ${error.message || "Unknown error"}`);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* 1. DISPLAY SAVED WORKOUTS FROM DB */}
-        <Text>Saved Plans</Text>
-        {savedWorkouts.map((workout) => (
-          <SavedPlanCard
-            key={workout.id}
-            workout={workout}
-            onDelete={deleteSavedWorkout}
-          />
-        ))}
-        {workoutPlan.map((workout) => (
-          <View key={workout.rowId}>
-            <Workout
-              exerciseList={exercises}
-              data={workout}
-              nameUpdate={workoutNameUpdate}
-              exerciseUpdate={workoutExerciseUpdate}
-            />
+    <SafeAreaView className="flex-1 bg-gray-100">
+      {!selectedWorkout ? (
+        <View className="flex-1 p-4">
+          <Text className="text-2xl font-bold text-gray-800 mb-6 text-center">
+            Start Workout
+          </Text>
+
+          {savedWorkouts.length === 0 ? (
+            <View className="flex-1 justify-center items-center">
+              <Text className="text-gray-500 text-center">
+                No workout plans found.{"\n"}Create one in your Profile.
+              </Text>
+            </View>
+          ) : (
+            <View>
+              <Text className="text-gray-600 mb-2">Select a workout:</Text>
+              <Dropdown
+                data={savedWorkouts}
+                labelField="name"
+                valueField="id"
+                placeholder="Choose workout..."
+                value={null}
+                onChange={(item) => handleWorkoutSelect(item)}
+                style={{
+                  backgroundColor: "white",
+                  borderRadius: 12,
+                  padding: 16,
+                  borderWidth: 1,
+                  borderColor: "#E5E5E5",
+                }}
+                placeholderStyle={{ color: "#999" }}
+                selectedTextStyle={{ color: "#000" }}
+              />
+            </View>
+          )}
+        </View>
+      ) : (
+        <>
+          <ScrollView
+            className="flex-1 p-4"
+            keyboardShouldPersistTaps="handled"
+          >
+            <View className="flex-row justify-between items-center mb-4">
+              <TouchableOpacity onPress={handleBack}>
+                <Text className="text-blue-500">← Back</Text>
+              </TouchableOpacity>
+              <Text className="text-xl font-bold text-gray-800">
+                {selectedWorkout.name}
+              </Text>
+              <View className="w-12" />
+            </View>
+
+            <UnitToggle unit={weightUnit} onToggle={toggleWeightUnit} />
+
+            {exerciseRecords.map((exercise, index) => (
+              <ExerciseCard
+                key={exercise.exerciseId}
+                exercise={exercise}
+                weightUnit={weightUnit}
+                onUpdate={(updated) => updateExercise(index, updated)}
+              />
+            ))}
+          </ScrollView>
+
+          <View className="p-4 bg-white border-t border-gray-200">
             <TouchableOpacity
-              style={styles.deleteWorkoutButton}
-              onPress={() => removeWorkoutRow(workout.rowId)}
+              onPress={handleSave}
+              className="bg-blue-500 py-4 rounded-xl items-center"
             >
-              <Text style={styles.deleteWorkoutText}>Remove This Workout</Text>
+              <Text className="text-white font-bold text-lg">Save Workout</Text>
             </TouchableOpacity>
           </View>
-        ))}
-      </ScrollView>
-
-      <View style={styles.footerActions}>
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={addWorkoutRow}
-        >
-          <Text style={styles.secondaryButtonText}>+ Add Another Workout</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.primaryButton, { marginTop: 12 }]}
-          onPress={handleOnSave}
-        >
-          <Text style={styles.buttonText}>Save Complete Plan</Text>
-        </TouchableOpacity>
-      </View>
+        </>
+      )}
     </SafeAreaView>
   );
 };
 
-const DropdownComponent = ({
-  labelField,
-  valueField,
-  placeholder,
-  data,
-  onValueChange,
-}: any) => {
-  const [value, setValue] = useState(null);
-
-  const renderItem = (item: any) => {
-    // Find the index of the current item in the full list
-    const currentIndex = data.findIndex((i: any) => i.id === item.id);
-
-    // Check if the previous item had a different muscle group
-    const isNewSection =
-      currentIndex === 0 ||
-      data[currentIndex - 1].muscle_group !== item.muscle_group;
-
-    return (
-      <View>
-        {isNewSection && (
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionHeaderText}>
-              {item.muscle_group?.toUpperCase()}
-            </Text>
-          </View>
-        )}
-        <View style={styles.dropdownItem}>
-          <Text style={styles.itemTextMain}>{item.name}</Text>
-        </View>
-      </View>
-    );
-  };
-
-  return (
-    <View style={{ flex: 1 }}>
-      <Dropdown
-        style={styles.dropdown}
-        placeholderStyle={styles.placeholderStyle}
-        selectedTextStyle={styles.selectedTextStyle}
-        containerStyle={styles.dropdownListContainer} // Styles the actual popup list
-        data={data}
-        maxHeight={400}
-        labelField={labelField}
-        valueField={valueField}
-        placeholder={placeholder}
-        value={value}
-        onChange={(item) => {
-          const val = item[valueField];
-          setValue(val);
-          onValueChange(val);
-        }}
-        renderItem={renderItem}
-      />
-    </View>
-  );
-};
-
-const Workout = ({ exerciseList, data, nameUpdate, exerciseUpdate }: any) => {
-  const handleSelectExercise = (rowId: number, selectedId: number) => {
-    const updatedExercises = data.exercises.map((row: any) =>
-      row.rowId === rowId ? { ...row, exerciseId: selectedId } : row
-    );
-    exerciseUpdate(data.rowId, updatedExercises);
-  };
-
-  const addRow = () => {
-    const newExercises = [
-      ...data.exercises,
-      { rowId: Date.now(), exerciseId: null },
-    ];
-    exerciseUpdate(data.rowId, newExercises);
-  };
-
-  const removeRow = (rowId: number) => {
-    if (data.exercises.length <= 1) {
-      Alert.alert("Error", "You need at least one exercise");
-    } else {
-      const filtered = data.exercises.filter((row: any) => row.rowId !== rowId);
-      exerciseUpdate(data.rowId, filtered);
-    }
-  };
-
-  return (
-    <View style={styles.workoutCard}>
-      <Text style={styles.label}>Workout Name</Text>
-      <TextInput
-        style={styles.input}
-        value={data.name}
-        placeholder="e.g., Heavy Push Day"
-        placeholderTextColor="#999"
-        onChangeText={(text) => nameUpdate(data.rowId, text)}
-      />
-
-      <Text style={[styles.label, { marginTop: 10 }]}>Exercises</Text>
-      {data.exercises.map((row: any) => (
-        <View key={row.rowId} style={styles.exerciseRow}>
-          <View style={{ flex: 1 }}>
-            <DropdownComponent
-              labelField="name"
-              valueField="id"
-              placeholder="Select Exercise"
-              data={exerciseList}
-              onValueChange={(id: number) =>
-                handleSelectExercise(row.rowId, id)
-              }
-            />
-          </View>
-          <TouchableOpacity
-            style={styles.inlineDeleteButton}
-            onPress={() => removeRow(row.rowId)}
-          >
-            <Text style={styles.deleteText}>✕</Text>
-          </TouchableOpacity>
-        </View>
-      ))}
-
-      <TouchableOpacity style={styles.addExerciseButton} onPress={addRow}>
-        <Text style={styles.addExerciseText}>+ Add Exercise</Text>
-      </TouchableOpacity>
-    </View>
-  );
-};
 export default function Index() {
-  const userDB = "userDatabase2.db";
+  const userDB = "userDatabase3.db";
 
   const handleOnInit = async (db: SQLiteDatabase) => {
     try {
@@ -688,19 +747,19 @@ export default function Index() {
 
       await db.execAsync(`
         PRAGMA journal_mode = WAL;
-  
+
         CREATE TABLE IF NOT EXISTS Exercises (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL UNIQUE, -- Required
-          muscle_group TEXT,  -- Optional
-          equipment_type TEXT -- Optional
+          name TEXT NOT NULL UNIQUE,
+          muscle_group TEXT,
+          equipment_type TEXT
         );
-  
+
         CREATE TABLE IF NOT EXISTS Workouts (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL  -- Required
+          name TEXT NOT NULL
         );
-  
+
         CREATE TABLE IF NOT EXISTS Workout_Exercises (
           workout_id INTEGER NOT NULL,
           exercise_id INTEGER NOT NULL,
@@ -708,21 +767,25 @@ export default function Index() {
           FOREIGN KEY (workout_id) REFERENCES Workouts(id) ON DELETE CASCADE,
           FOREIGN KEY (exercise_id) REFERENCES Exercises(id) ON DELETE CASCADE
         );
-  
+
         CREATE TABLE IF NOT EXISTS Records (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          date TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Required
-          workout_id INTEGER NOT NULL,                  -- Required
-          exercise_id INTEGER,                           -- Nullable for SET NULL
-          
-          -- These stay nullable so you don't get errors if a user skips them
-          weight REAL, 
-          set_number INTEGER NOT NULL,                   -- Required for tracking order
+          date TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          workout_id INTEGER NOT NULL,
+          exercise_id INTEGER,
+          weight REAL,
+          set_number INTEGER NOT NULL,
           reps INTEGER,
           half_reps INTEGER,
-          
           FOREIGN KEY (workout_id) REFERENCES Workouts(id) ON DELETE CASCADE,
           FOREIGN KEY (exercise_id) REFERENCES Exercises(id) ON DELETE SET NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          firstName TEXT NOT NULL,
+          lastName TEXT NOT NULL,
+          weight_unit TEXT DEFAULT 'kg'
         );
       `);
     } catch (error) {
@@ -731,7 +794,7 @@ export default function Index() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView className="flex-1">
       <SQLiteProvider
         databaseName={userDB}
         onInit={handleOnInit}
@@ -744,196 +807,3 @@ export default function Index() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F2F2F7", // Light grey background
-  },
-  scrollContainer: {
-    padding: 16,
-  },
-  workoutCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    // Shadow for iOS
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    // Elevation for Android
-    elevation: 3,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#444",
-    marginBottom: 6,
-  },
-  input: {
-    height: 45,
-    borderWidth: 1,
-    borderColor: "#DDD",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    fontSize: 16,
-    backgroundColor: "#FAFAFA",
-    marginBottom: 10,
-  },
-  exerciseRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  dropdownContainer: {
-    flex: 1,
-  },
-  dropdown: {
-    height: 45,
-    borderColor: "#DDD",
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    backgroundColor: "#FFF",
-  },
-  inlineDeleteButton: {
-    padding: 10,
-    marginLeft: 8,
-    justifyContent: "center",
-  },
-  deleteText: {
-    color: "#FF3B30", // iOS Red
-    fontSize: 20,
-    fontWeight: "bold",
-  },
-  addExerciseButton: {
-    marginTop: 8,
-    padding: 10,
-    alignItems: "center",
-  },
-  addExerciseText: {
-    color: "#007AFF", // iOS Blue
-    fontWeight: "600",
-  },
-  deleteWorkoutButton: {
-    backgroundColor: "#FFF1F0",
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: "#FFA39E",
-  },
-  deleteWorkoutText: {
-    color: "#CF1322",
-    fontWeight: "600",
-  },
-  footerActions: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: "#DDD",
-    backgroundColor: "#FFF",
-  },
-  primaryButton: {
-    backgroundColor: "#007AFF",
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  secondaryButton: {
-    backgroundColor: "#FFF",
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#007AFF",
-  },
-  buttonText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  secondaryButtonText: {
-    color: "#007AFF",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  placeholderStyle: {
-    fontSize: 16,
-    color: "#999",
-  },
-  selectedTextStyle: {
-    fontSize: 16,
-    color: "#000",
-  },
-  savedWorkoutTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#1C1C1E",
-    marginBottom: 8,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: "#EEE",
-    marginBottom: 12,
-  },
-  savedExerciseRow: {
-    flexDirection: "row",
-    marginBottom: 4,
-    alignItems: "center",
-  },
-  bullet: {
-    fontSize: 18,
-    color: "#007AFF",
-    marginRight: 8,
-    width: 10,
-  },
-  savedExerciseText: {
-    fontSize: 16,
-    color: "#3A3A3C",
-  },
-  emptyText: {
-    fontStyle: "italic",
-    color: "#8E8E93",
-  },
-  sectionHeader: {
-    backgroundColor: "#F2F2F7", // Light grey background for the header
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E5EA",
-  },
-  sectionHeaderText: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#8E8E93",
-    letterSpacing: 1,
-  },
-  dropdownItem: {
-    padding: 15,
-    backgroundColor: "#FFF",
-  },
-  dropdownListContainer: {
-    borderRadius: 12,
-    overflow: "hidden",
-    marginTop: 4,
-  },
-  itemTextMain: {
-    fontSize: 16,
-    color: "#000",
-  },
-  savedCardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  deleteIconText: {
-    color: "#FF3B30",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-});
