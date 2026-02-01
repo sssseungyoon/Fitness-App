@@ -317,7 +317,7 @@ const CalendarView = () => {
 };
 
 export default function Calendar() {
-  const userDB = "userDatabase3.db";
+  const userDB = "userDatabase7.db";
 
   return (
     <SafeAreaView className="flex-1 bg-gray-100" edges={["bottom"]}>

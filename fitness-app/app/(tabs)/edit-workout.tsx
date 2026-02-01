@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,6 +13,34 @@ import {
 } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+// Constants for custom exercise feature
+const ADD_CUSTOM_EXERCISE_ID = -1;
+const ADD_CUSTOM_ITEM = {
+  id: ADD_CUSTOM_EXERCISE_ID,
+  name: "+ Add Custom Exercise",
+  muscle_group: "_action",
+  equipment_type: "",
+  is_custom: 0,
+};
+
+const MUSCLE_GROUPS = [
+  { label: "Chest", value: "chest" },
+  { label: "Back", value: "back" },
+  { label: "Shoulders", value: "shoulders" },
+  { label: "Arms", value: "arms" },
+  { label: "Legs", value: "legs" },
+  { label: "Glutes", value: "glutes" },
+  { label: "Abs", value: "abs" },
+  { label: "Calves", value: "calves" },
+  { label: "Forearms", value: "forearms" },
+];
+
+const EQUIPMENT_TYPES = [
+  { label: "Free Weight", value: "free-weight" },
+  { label: "Machine", value: "machine" },
+  { label: "Bodyweight", value: "bodyweight" },
+];
 
 const bulkImportExercises = async (db: SQLiteDatabase, exerciseList: any[]) => {
   try {
@@ -38,6 +67,7 @@ interface Exercise {
   name: string;
   muscle_group: string;
   equipment_type: string;
+  is_custom: number;
 }
 const exerciseList: any = [
   // --- CHEST ---
@@ -86,6 +116,59 @@ const exerciseList: any = [
   { name: "Push-Up", muscle_group: "chest", equipment_type: "bodyweight" },
   { name: "Dips", muscle_group: "chest", equipment_type: "bodyweight" },
 
+  // --- BACK ---
+  { name: "Deadlift", muscle_group: "back", equipment_type: "free-weight" },
+  { name: "Pull-Up", muscle_group: "back", equipment_type: "bodyweight" },
+  { name: "Chin-Up", muscle_group: "back", equipment_type: "bodyweight" },
+  { name: "Lat Pulldown", muscle_group: "back", equipment_type: "machine" },
+  {
+    name: "Close-Grip Lat Pulldown",
+    muscle_group: "back",
+    equipment_type: "machine",
+  },
+  {
+    name: "Single-Arm Lat Pulldown",
+    muscle_group: "back",
+    equipment_type: "machine",
+  },
+  {
+    name: "Straight Arm Pulldown",
+    muscle_group: "back",
+    equipment_type: "machine",
+  },
+  { name: "Barbell Row", muscle_group: "back", equipment_type: "free-weight" },
+  { name: "Dumbbell Row", muscle_group: "back", equipment_type: "free-weight" },
+  { name: "Seated Cable Row", muscle_group: "back", equipment_type: "machine" },
+  { name: "T-Bar Row", muscle_group: "back", equipment_type: "free-weight" },
+  {
+    name: "Bent Over Row",
+    muscle_group: "back",
+    equipment_type: "free-weight",
+  },
+  { name: "Meadows Row", muscle_group: "back", equipment_type: "free-weight" },
+  {
+    name: "Chest-Supported Row",
+    muscle_group: "back",
+    equipment_type: "machine",
+  },
+  { name: "Inverted Row", muscle_group: "back", equipment_type: "bodyweight" },
+  {
+    name: "Back Extension",
+    muscle_group: "back",
+    equipment_type: "bodyweight",
+  },
+  {
+    name: "Dumbbell Shrugs",
+    muscle_group: "back",
+    equipment_type: "free-weight",
+  },
+  {
+    name: "Barbell Shrugs",
+    muscle_group: "back",
+    equipment_type: "free-weight",
+  },
+  { name: "Rack Pulls", muscle_group: "back", equipment_type: "free-weight" },
+
   // --- SHOULDERS ---
   {
     name: "Overhead Press",
@@ -119,6 +202,11 @@ const exerciseList: any = [
   },
   { name: "Face Pull", muscle_group: "shoulders", equipment_type: "machine" },
   {
+    name: "Reverse Pec Deck",
+    muscle_group: "shoulders",
+    equipment_type: "machine",
+  },
+  {
     name: "Cable Lateral Raise",
     muscle_group: "shoulders",
     equipment_type: "machine",
@@ -133,8 +221,13 @@ const exerciseList: any = [
     muscle_group: "shoulders",
     equipment_type: "free-weight",
   },
+  {
+    name: "Upright Row",
+    muscle_group: "shoulders",
+    equipment_type: "free-weight",
+  },
 
-  // --- BICEPS ---
+  // --- ARMS ---
   { name: "Barbell Curl", muscle_group: "arms", equipment_type: "free-weight" },
   {
     name: "Dumbbell Curl",
@@ -152,14 +245,18 @@ const exerciseList: any = [
     muscle_group: "arms",
     equipment_type: "free-weight",
   },
+  { name: "Spider Curl", muscle_group: "arms", equipment_type: "free-weight" },
+  {
+    name: "Concentration Curl",
+    muscle_group: "arms",
+    equipment_type: "free-weight",
+  },
   { name: "Cable Curl", muscle_group: "arms", equipment_type: "machine" },
   {
     name: "Machine Bicep Curl",
     muscle_group: "arms",
     equipment_type: "machine",
   },
-
-  // --- TRICEPS ---
   {
     name: "Tricep Pushdown (Bar)",
     muscle_group: "arms",
@@ -190,7 +287,13 @@ const exerciseList: any = [
     muscle_group: "arms",
     equipment_type: "free-weight",
   },
+  { name: "JM Press", muscle_group: "arms", equipment_type: "free-weight" },
   { name: "Bench Dip", muscle_group: "arms", equipment_type: "bodyweight" },
+  {
+    name: "Diamond Push-Up",
+    muscle_group: "arms",
+    equipment_type: "bodyweight",
+  },
 
   // --- LEGS ---
   { name: "Squat", muscle_group: "legs", equipment_type: "free-weight" },
@@ -212,26 +315,9 @@ const exerciseList: any = [
   { name: "Goblet Squat", muscle_group: "legs", equipment_type: "free-weight" },
   { name: "Lunges", muscle_group: "legs", equipment_type: "free-weight" },
   { name: "Hack Squat", muscle_group: "legs", equipment_type: "machine" },
-
-  // --- BACK ---
-  { name: "Deadlift", muscle_group: "back", equipment_type: "free-weight" },
-  { name: "Pull-Up", muscle_group: "back", equipment_type: "bodyweight" },
-  { name: "Chin-Up", muscle_group: "back", equipment_type: "bodyweight" },
-  { name: "Lat Pulldown", muscle_group: "back", equipment_type: "machine" },
-  { name: "Barbell Row", muscle_group: "back", equipment_type: "free-weight" },
-  { name: "Dumbbell Row", muscle_group: "back", equipment_type: "free-weight" },
-  { name: "Seated Cable Row", muscle_group: "back", equipment_type: "machine" },
-  { name: "T-Bar Row", muscle_group: "back", equipment_type: "free-weight" },
-  {
-    name: "Bent Over Row",
-    muscle_group: "back",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Back Extension",
-    muscle_group: "back",
-    equipment_type: "bodyweight",
-  },
+  { name: "Step-Ups", muscle_group: "legs", equipment_type: "free-weight" },
+  { name: "Sissy Squat", muscle_group: "legs", equipment_type: "bodyweight" },
+  { name: "Sumo Squat", muscle_group: "legs", equipment_type: "free-weight" },
 
   // --- GLUTES ---
   { name: "Hip Thrust", muscle_group: "glutes", equipment_type: "free-weight" },
@@ -263,6 +349,14 @@ const exerciseList: any = [
   { name: "Cable Crunch", muscle_group: "abs", equipment_type: "machine" },
   { name: "Russian Twist", muscle_group: "abs", equipment_type: "free-weight" },
   { name: "Bicycle Crunch", muscle_group: "abs", equipment_type: "bodyweight" },
+  { name: "Dead Bug", muscle_group: "abs", equipment_type: "bodyweight" },
+  {
+    name: "Ab Wheel Rollout",
+    muscle_group: "abs",
+    equipment_type: "free-weight",
+  },
+  { name: "Pallof Press", muscle_group: "abs", equipment_type: "machine" },
+  { name: "Woodchoppers", muscle_group: "abs", equipment_type: "machine" },
 
   // --- CALVES ---
   {
@@ -300,10 +394,122 @@ interface Workout {
   exercises: { rowId: number; exerciseId: number | null }[];
 }
 
+// Add Custom Exercise Modal Component
+const AddExerciseModal = ({
+  visible,
+  onClose,
+  onSave,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSave: (name: string, muscleGroup: string, equipmentType: string) => void;
+}) => {
+  const [exerciseName, setExerciseName] = useState("");
+  const [muscleGroup, setMuscleGroup] = useState<string | null>(null);
+  const [equipmentType, setEquipmentType] = useState<string | null>(null);
+
+  const handleSave = () => {
+    if (!exerciseName.trim()) {
+      Alert.alert("Error", "Please enter an exercise name");
+      return;
+    }
+    if (!muscleGroup) {
+      Alert.alert("Error", "Please select a muscle group");
+      return;
+    }
+    if (!equipmentType) {
+      Alert.alert("Error", "Please select an equipment type");
+      return;
+    }
+    onSave(exerciseName.trim(), muscleGroup, equipmentType);
+    // Reset form
+    setExerciseName("");
+    setMuscleGroup(null);
+    setEquipmentType(null);
+  };
+
+  const handleClose = () => {
+    setExerciseName("");
+    setMuscleGroup(null);
+    setEquipmentType(null);
+    onClose();
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={handleClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+              <Text style={styles.closeButtonText}>✕</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Add Custom Exercise</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          <View style={styles.modalBody}>
+            <Text style={styles.label}>Exercise Name</Text>
+            <TextInput
+              style={styles.input}
+              value={exerciseName}
+              placeholder="e.g., Seated Row Machine"
+              placeholderTextColor="#999"
+              onChangeText={setExerciseName}
+            />
+
+            <Text style={[styles.label, { marginTop: 16 }]}>Muscle Group</Text>
+            <Dropdown
+              style={styles.dropdown}
+              placeholderStyle={styles.placeholderStyle}
+              selectedTextStyle={styles.selectedTextStyle}
+              data={MUSCLE_GROUPS}
+              maxHeight={300}
+              labelField="label"
+              valueField="value"
+              placeholder="Select muscle group"
+              value={muscleGroup}
+              onChange={(item) => setMuscleGroup(item.value)}
+            />
+
+            <Text style={[styles.label, { marginTop: 16 }]}>
+              Equipment Type
+            </Text>
+            <Dropdown
+              style={styles.dropdown}
+              placeholderStyle={styles.placeholderStyle}
+              selectedTextStyle={styles.selectedTextStyle}
+              data={EQUIPMENT_TYPES}
+              maxHeight={200}
+              labelField="label"
+              valueField="value"
+              placeholder="Select equipment type"
+              value={equipmentType}
+              onChange={(item) => setEquipmentType(item.value)}
+            />
+
+            <TouchableOpacity
+              style={[styles.primaryButton, { marginTop: 24 }]}
+              onPress={handleSave}
+            >
+              <Text style={styles.buttonText}>Save Exercise</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 const MainView = () => {
   const db = useSQLiteContext();
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showAddExerciseModal, setShowAddExerciseModal] = useState(false);
 
   const [workoutPlan, setWorkoutPlan] = useState([
     {
@@ -349,7 +555,10 @@ const MainView = () => {
             };
           }
           if (exerciseName && exerciseId) {
-            acc[workoutId].exercises.push({ id: exerciseId, name: exerciseName });
+            acc[workoutId].exercises.push({
+              id: exerciseId,
+              name: exerciseName,
+            });
           }
           return acc;
         },
@@ -362,15 +571,111 @@ const MainView = () => {
     }
   };
 
+  const fetchExercises = async () => {
+    try {
+      // First check if is_custom column exists
+      const tableInfo = await db.getAllAsync<{ name: string }>(
+        "PRAGMA table_info(Exercises)"
+      );
+      const hasIsCustom = tableInfo.some((col) => col.name === "is_custom");
+      console.log("Has is_custom column:", hasIsCustom);
+
+      let freshData: Exercise[];
+      if (hasIsCustom) {
+        freshData = await db.getAllAsync<Exercise>(
+          "SELECT id, name, muscle_group, equipment_type, is_custom FROM Exercises ORDER BY is_custom DESC, muscle_group ASC, name ASC"
+        );
+      } else {
+        freshData = await db.getAllAsync<Exercise>(
+          "SELECT id, name, muscle_group, equipment_type, 0 as is_custom FROM Exercises ORDER BY muscle_group ASC, name ASC"
+        );
+      }
+      console.log("Fetched exercises:", freshData.length);
+      setExercises(freshData);
+    } catch (error) {
+      console.error("Failed to fetch exercises:", error);
+    }
+  };
+
+  const saveCustomExercise = async (
+    name: string,
+    muscleGroup: string,
+    equipmentType: string
+  ) => {
+    try {
+      await db.runAsync(
+        "INSERT INTO Exercises (name, muscle_group, equipment_type, is_custom) VALUES (?, ?, ?, 1)",
+        [name, muscleGroup, equipmentType]
+      );
+      await fetchExercises();
+      setShowAddExerciseModal(false);
+      Alert.alert("Success", `"${name}" has been added to your exercises!`);
+    } catch (error: any) {
+      if (error.message?.includes("UNIQUE constraint failed")) {
+        Alert.alert("Error", "An exercise with this name already exists");
+      } else {
+        console.error("Failed to save custom exercise:", error);
+        Alert.alert("Error", "Failed to save exercise");
+      }
+    }
+  };
+
+  const deleteCustomExercise = (exerciseId: number, exerciseName: string) => {
+    Alert.alert(
+      "Delete Exercise",
+      `Are you sure you want to delete "${exerciseName}"?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await db.runAsync(
+                "DELETE FROM Exercises WHERE id = ? AND is_custom = 1",
+                [exerciseId]
+              );
+              await fetchExercises();
+            } catch (error) {
+              console.error("Failed to delete exercise:", error);
+              Alert.alert("Error", "Failed to delete exercise");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Prepare exercise list with custom exercises first, then add the "Add Custom" action item
+  const getDropdownData = () => {
+    console.log("Exercises count:", exercises.length);
+    // Sort: custom first, then by muscle group
+    const sorted = [...exercises].sort((a, b) => {
+      if (a.is_custom && !b.is_custom) return -1;
+      if (!a.is_custom && b.is_custom) return 1;
+      return 0;
+    });
+    return [ADD_CUSTOM_ITEM, ...sorted];
+  };
+
   useEffect(() => {
     const setupDatabase = async () => {
       try {
+        console.log("Starting database setup...");
+        // Add is_custom column if it doesn't exist (for existing databases)
+        try {
+          await db.execAsync(
+            `ALTER TABLE Exercises ADD COLUMN is_custom INTEGER DEFAULT 0;`
+          );
+          console.log("Added is_custom column");
+        } catch {
+          // Column already exists, ignore error
+        }
         // 2. Only import if the table is empty
         await bulkImportExercises(db, exerciseList);
-        const freshData = await db.getAllAsync<Exercise>(
-          "SELECT * FROM Exercises"
-        );
-        setExercises(freshData);
+        console.log("Bulk import done, fetching exercises...");
+        await fetchExercises();
+        console.log("Exercises fetched, fetching workouts...");
         fetchSavedWorkouts();
       } catch (e) {
         console.error("Setup failed", e);
@@ -442,12 +747,17 @@ const MainView = () => {
 
       <View style={styles.divider} />
 
-      {workout?.exercises?.map((ex: { id: number; name: string }, index: number) => (
-        <View key={`${workout.id}-${ex.id}-${index}`} style={styles.savedExerciseRow}>
-          <Text style={styles.bullet}>•</Text>
-          <Text style={styles.savedExerciseText}>{ex.name}</Text>
-        </View>
-      ))}
+      {workout?.exercises?.map(
+        (ex: { id: number; name: string }, index: number) => (
+          <View
+            key={`${workout.id}-${ex.id}-${index}`}
+            style={styles.savedExerciseRow}
+          >
+            <Text style={styles.bullet}>•</Text>
+            <Text style={styles.savedExerciseText}>{ex.name}</Text>
+          </View>
+        )
+      )}
     </View>
   );
 
@@ -469,7 +779,9 @@ const MainView = () => {
       await db.withTransactionAsync(async () => {
         // If editing, delete the old workout first
         if (editingWorkoutId) {
-          await db.runAsync("DELETE FROM Workouts WHERE id = ?", [editingWorkoutId]);
+          await db.runAsync("DELETE FROM Workouts WHERE id = ?", [
+            editingWorkoutId,
+          ]);
         }
 
         for (const workout of workoutPlan) {
@@ -551,10 +863,12 @@ const MainView = () => {
         {workoutPlan.map((workout) => (
           <View key={workout.rowId}>
             <Workout
-              exerciseList={exercises}
+              exerciseList={getDropdownData()}
               data={workout}
               nameUpdate={workoutNameUpdate}
               exerciseUpdate={workoutExerciseUpdate}
+              onAddCustomExercise={() => setShowAddExerciseModal(true)}
+              onDeleteCustomExercise={deleteCustomExercise}
             />
             <TouchableOpacity
               style={styles.deleteWorkoutButton}
@@ -581,6 +895,12 @@ const MainView = () => {
           <Text style={styles.buttonText}>Save Complete Plan</Text>
         </TouchableOpacity>
       </View>
+
+      <AddExerciseModal
+        visible={showAddExerciseModal}
+        onClose={() => setShowAddExerciseModal(false)}
+        onSave={saveCustomExercise}
+      />
     </SafeAreaView>
   );
 };
@@ -592,29 +912,70 @@ const DropdownComponent = ({
   data,
   onValueChange,
   initialValue,
+  onAddCustomExercise,
+  onDeleteCustomExercise,
 }: any) => {
   const [value, setValue] = useState(initialValue ?? null);
 
   const renderItem = (item: any) => {
-    // Find the index of the current item in the full list
+    // Handle the special "Add Custom Exercise" action item
+    if (item.id === ADD_CUSTOM_EXERCISE_ID) {
+      return (
+        <View style={styles.addCustomItem}>
+          <Text style={styles.addCustomItemText}>{item.name}</Text>
+        </View>
+      );
+    }
+
+    // Find the index of the current item in the full list (excluding action item)
     const currentIndex = data.findIndex((i: any) => i.id === item.id);
 
     // Check if the previous item had a different muscle group
-    const isNewSection =
-      currentIndex === 0 ||
-      data[currentIndex - 1].muscle_group !== item.muscle_group;
+    // For custom exercises, show "CUSTOM" section header
+    const isCustom = item.is_custom === 1;
+    const prevItem = currentIndex > 0 ? data[currentIndex - 1] : null;
+
+    let isNewSection = false;
+    if (currentIndex === 1) {
+      // First real item after "Add Custom" action
+      isNewSection = true;
+    } else if (prevItem && prevItem.id !== ADD_CUSTOM_EXERCISE_ID) {
+      // Check if transitioning between custom and non-custom or between muscle groups
+      if (isCustom !== (prevItem.is_custom === 1)) {
+        isNewSection = true;
+      } else if (!isCustom && prevItem.muscle_group !== item.muscle_group) {
+        isNewSection = true;
+      }
+    }
+
+    const sectionLabel = isCustom ? "CUSTOM" : item.muscle_group?.toUpperCase();
 
     return (
       <View>
         {isNewSection && (
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionHeaderText}>
-              {item.muscle_group?.toUpperCase()}
-            </Text>
+            <Text style={styles.sectionHeaderText}>{sectionLabel}</Text>
           </View>
         )}
-        <View style={styles.dropdownItem}>
-          <Text style={styles.itemTextMain}>{item.name}</Text>
+        <View
+          style={[styles.dropdownItem, isCustom && styles.customExerciseItem]}
+        >
+          <Text
+            style={[styles.itemTextMain, isCustom && styles.customExerciseText]}
+          >
+            {item.name}
+          </Text>
+          {isCustom && (
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation();
+                onDeleteCustomExercise(item.id, item.name);
+              }}
+              style={styles.deleteExerciseButton}
+            >
+              <Text style={styles.deleteExerciseIcon}>🗑️</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     );
@@ -626,14 +987,20 @@ const DropdownComponent = ({
         style={styles.dropdown}
         placeholderStyle={styles.placeholderStyle}
         selectedTextStyle={styles.selectedTextStyle}
-        containerStyle={styles.dropdownListContainer} // Styles the actual popup list
+        containerStyle={styles.dropdownListContainer}
         data={data}
         maxHeight={400}
         labelField={labelField}
         valueField={valueField}
         placeholder={placeholder}
         value={value}
+        autoScroll={false}
         onChange={(item) => {
+          // Handle the special "Add Custom Exercise" action
+          if (item.id === ADD_CUSTOM_EXERCISE_ID) {
+            onAddCustomExercise();
+            return; // Don't update the value
+          }
           const val = item[valueField];
           setValue(val);
           onValueChange(val);
@@ -644,7 +1011,14 @@ const DropdownComponent = ({
   );
 };
 
-const Workout = ({ exerciseList, data, nameUpdate, exerciseUpdate }: any) => {
+const Workout = ({
+  exerciseList,
+  data,
+  nameUpdate,
+  exerciseUpdate,
+  onAddCustomExercise,
+  onDeleteCustomExercise,
+}: any) => {
   const handleSelectExercise = (rowId: number, selectedId: number) => {
     const updatedExercises = data.exercises.map((row: any) =>
       row.rowId === rowId ? { ...row, exerciseId: selectedId } : row
@@ -693,6 +1067,8 @@ const Workout = ({ exerciseList, data, nameUpdate, exerciseUpdate }: any) => {
                 handleSelectExercise(row.rowId, id)
               }
               initialValue={row.exerciseId}
+              onAddCustomExercise={onAddCustomExercise}
+              onDeleteCustomExercise={onDeleteCustomExercise}
             />
           </View>
           <TouchableOpacity
@@ -715,27 +1091,34 @@ const Workout = ({ exerciseList, data, nameUpdate, exerciseUpdate }: any) => {
 export { MainView as EditWorkoutView };
 
 export default function EditWorkout() {
-  const userDB = "userDatabase2.db";
+  const userDB = "userDatabase7.db";
 
   const handleOnInit = async (db: SQLiteDatabase) => {
     try {
+      console.log("Initializing database...");
       await db.execAsync(`PRAGMA foreign_keys = ON;`);
+      await db.execAsync(`PRAGMA journal_mode = WAL;`);
 
       await db.execAsync(`
-        PRAGMA journal_mode = WAL;
-  
         CREATE TABLE IF NOT EXISTS Exercises (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL UNIQUE, -- Required
-          muscle_group TEXT,  -- Optional
-          equipment_type TEXT -- Optional
+          name TEXT NOT NULL UNIQUE,
+          muscle_group TEXT,
+          equipment_type TEXT,
+          is_custom INTEGER DEFAULT 0
         );
-  
+      `);
+      console.log("Exercises table created");
+
+      await db.execAsync(`
         CREATE TABLE IF NOT EXISTS Workouts (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL  -- Required
+          name TEXT NOT NULL
         );
-  
+      `);
+      console.log("Workouts table created");
+
+      await db.execAsync(`
         CREATE TABLE IF NOT EXISTS Workout_Exercises (
           workout_id INTEGER NOT NULL,
           exercise_id INTEGER NOT NULL,
@@ -743,23 +1126,36 @@ export default function EditWorkout() {
           FOREIGN KEY (workout_id) REFERENCES Workouts(id) ON DELETE CASCADE,
           FOREIGN KEY (exercise_id) REFERENCES Exercises(id) ON DELETE CASCADE
         );
-  
+      `);
+      console.log("Workout_Exercises table created");
+
+      await db.execAsync(`
         CREATE TABLE IF NOT EXISTS Records (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          date TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Required
-          workout_id INTEGER NOT NULL,                  -- Required
-          exercise_id INTEGER,                           -- Nullable for SET NULL
-          
-          -- These stay nullable so you don't get errors if a user skips them
-          weight REAL, 
-          set_number INTEGER NOT NULL,                   -- Required for tracking order
+          date TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          workout_id INTEGER NOT NULL,
+          exercise_id INTEGER,
+          weight REAL,
+          set_number INTEGER NOT NULL,
           reps INTEGER,
           half_reps INTEGER,
-          
           FOREIGN KEY (workout_id) REFERENCES Workouts(id) ON DELETE CASCADE,
           FOREIGN KEY (exercise_id) REFERENCES Exercises(id) ON DELETE SET NULL
         );
       `);
+      console.log("Records table created");
+
+      // Add is_custom column if it doesn't exist (for existing databases)
+      try {
+        await db.execAsync(
+          `ALTER TABLE Exercises ADD COLUMN is_custom INTEGER DEFAULT 0;`
+        );
+        console.log("Added is_custom column");
+      } catch {
+        // Column already exists, ignore error
+      }
+
+      console.log("Database initialization complete");
     } catch (error) {
       console.error("Init failed:", error);
     }
@@ -970,5 +1366,77 @@ const styles = StyleSheet.create({
     color: "#FF3B30",
     fontSize: 14,
     fontWeight: "600",
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#FFF",
+    borderRadius: 16,
+    width: "90%",
+    maxWidth: 400,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEE",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#1C1C1E",
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  closeButtonText: {
+    fontSize: 20,
+    color: "#8E8E93",
+  },
+  modalBody: {
+    padding: 20,
+  },
+  // Custom exercise dropdown styles
+  addCustomItem: {
+    padding: 15,
+    backgroundColor: "#E8F4FD",
+    borderBottomWidth: 1,
+    borderBottomColor: "#B8D9F0",
+  },
+  addCustomItemText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#007AFF",
+  },
+  customExerciseItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#FFF9E6",
+  },
+  customExerciseText: {
+    color: "#996600",
+  },
+  deleteExerciseButton: {
+    padding: 8,
+  },
+  deleteExerciseIcon: {
+    fontSize: 16,
   },
 });

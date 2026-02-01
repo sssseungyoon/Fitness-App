@@ -401,7 +401,7 @@ const ProfileView = () => {
 };
 
 const Profile = () => {
-  const userDB = "userDatabase3.db";
+  const userDB = "userDatabase7.db";
 
   const handleOnInit = async (db: SQLiteDatabase) => {
     try {

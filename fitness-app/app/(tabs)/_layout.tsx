@@ -1,14 +1,27 @@
-import React from "react";
+import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
+import React from "react";
 
 const _layout = () => {
   return (
-    <Tabs>
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: "#007AFF", // Standard iOS blue
+        tabBarInactiveTintColor: "gray",
+      }}
+    >
       <Tabs.Screen
         name="calendar"
         options={{
           title: "Calendar",
           headerTitleAlign: "center",
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "calendar" : "calendar-outline"}
+              size={24}
+              color={color}
+            />
+          ),
         }}
       />
       <Tabs.Screen
@@ -16,6 +29,13 @@ const _layout = () => {
         options={{
           title: "Home",
           headerShown: false,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "home" : "home-outline"}
+              size={24}
+              color={color}
+            />
+          ),
         }}
       />
       <Tabs.Screen
@@ -24,12 +44,21 @@ const _layout = () => {
           title: "User Profile",
           headerTitleAlign: "center",
           tabBarLabel: "Profile",
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "person" : "person-outline"}
+              size={24}
+              color={color}
+            />
+          ),
         }}
       />
+
+      {/* Hidden Screens */}
       <Tabs.Screen
         name="edit-workout"
         options={{
-          href: null, // Hide from tab bar - accessed via modal
+          href: null,
         }}
       />
       <Tabs.Screen
@@ -37,7 +66,7 @@ const _layout = () => {
         options={{
           title: "Edit Workout",
           headerTitleAlign: "center",
-          href: null, // Hide from tab bar - accessed via navigation
+          href: null,
         }}
       />
     </Tabs>

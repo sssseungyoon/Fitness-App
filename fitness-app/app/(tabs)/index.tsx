@@ -273,11 +273,25 @@ const MainView = () => {
     setExerciseRecords(newRecords);
   };
 
-  // Go back to workout selection (keeps draft saved)
+  // Go back to workout selection with confirmation
   const handleBack = () => {
-    backPressedRef.current = true;
-    setSelectedWorkout(null);
-    setExerciseRecords([]);
+    Alert.alert(
+      "Discard Progress?",
+      "Your current workout progress will be lost. Are you sure you want to go back?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Discard",
+          style: "destructive",
+          onPress: async () => {
+            backPressedRef.current = true;
+            await clearDraft();
+            setSelectedWorkout(null);
+            setExerciseRecords([]);
+          },
+        },
+      ]
+    );
   };
 
   // Discard current draft and start fresh
@@ -343,7 +357,10 @@ const MainView = () => {
       setExerciseRecords([]);
     } catch (error: any) {
       console.error("Failed to save:", error);
-      Alert.alert("Error", `Failed to save workout: ${error.message || "Unknown error"}`);
+      Alert.alert(
+        "Error",
+        `Failed to save workout: ${error.message || "Unknown error"}`
+      );
     }
   };
 
@@ -481,7 +498,7 @@ const MainView = () => {
 };
 
 export default function Index() {
-  const userDB = "userDatabase3.db";
+  const userDB = "userDatabase7.db";
 
   const handleOnInit = async (db: SQLiteDatabase) => {
     try {
@@ -495,6 +512,7 @@ export default function Index() {
           name TEXT NOT NULL UNIQUE,
           muscle_group TEXT,
           equipment_type TEXT
+          is_custom INTEGER DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS Workouts (
