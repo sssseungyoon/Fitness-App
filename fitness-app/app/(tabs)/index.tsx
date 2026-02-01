@@ -1,43 +1,25 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { SQLiteDatabase, SQLiteProvider, useSQLiteContext } from "expo-sqlite";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
 import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  ExerciseCard,
+  ExerciseRecord,
+  PreviousSetData,
+  UnitToggle,
+} from "../components/workout-input";
 
 const DRAFT_STORAGE_KEY = "workout_draft";
-
-interface SetData {
-  setNumber: number;
-  weight: number;
-  reps: number;
-  halfReps: number;
-}
-
-interface PreviousSetData {
-  setNumber: number;
-  weight: number;
-  reps: number;
-  halfReps: number;
-  date: string;
-}
-
-interface ExerciseRecord {
-  exerciseId: number;
-  exerciseName: string;
-  equipmentType: string;
-  sets: SetData[];
-  previousSets: PreviousSetData[];
-}
 
 interface SavedWorkout {
   id: number;
@@ -45,331 +27,15 @@ interface SavedWorkout {
   exercises: { id: number; name: string; equipment_type: string }[];
 }
 
-// Number Input with +/- buttons and manual text entry
-const NumberInput = ({
-  value,
-  onChange,
-  step = 1,
-  unit,
-  label,
-  min = 0,
-  max = 9999,
-  isInteger = false,
-}: {
-  value: number;
-  onChange: (val: number) => void;
-  step?: number;
-  unit?: string;
-  label: string;
-  min?: number;
-  max?: number;
-  isInteger?: boolean;
-}) => {
-  const [textValue, setTextValue] = useState(
-    isInteger ? value.toString() : value.toFixed(1)
-  );
-
-  // Sync text value when external value changes
-  useEffect(() => {
-    setTextValue(isInteger ? value.toString() : value.toFixed(1));
-  }, [value, isInteger]);
-
-  const increment = () => {
-    const newVal = Math.min(max, value + step);
-    onChange(Number(newVal.toFixed(1)));
-  };
-
-  const decrement = () => {
-    const newVal = Math.max(min, value - step);
-    onChange(Number(newVal.toFixed(1)));
-  };
-
-  const handleTextChange = (text: string) => {
-    // Allow empty string, numbers, and one decimal point
-    if (isInteger) {
-      // Only allow digits
-      if (/^\d*$/.test(text)) {
-        setTextValue(text);
-      }
-    } else {
-      // Allow digits and one decimal point
-      if (/^\d*\.?\d*$/.test(text)) {
-        setTextValue(text);
-      }
-    }
-  };
-
-  const handleBlur = () => {
-    const num = parseFloat(textValue);
-    if (!isNaN(num) && num >= min && num <= max) {
-      // Round to step precision
-      const rounded = isInteger
-        ? Math.round(num)
-        : Math.round(num / step) * step;
-      const clamped = Math.max(min, Math.min(max, rounded));
-      onChange(Number(clamped.toFixed(1)));
-      setTextValue(isInteger ? clamped.toString() : clamped.toFixed(1));
-    } else {
-      // Reset to current value if invalid
-      setTextValue(isInteger ? value.toString() : value.toFixed(1));
-    }
-  };
-
-  return (
-    <View className="flex-row items-center justify-between py-2">
-      <Text className="text-gray-600 text-sm w-16">{label}</Text>
-      <View className="flex-row items-center">
-        <TouchableOpacity
-          onPress={decrement}
-          className="w-12 h-12 bg-gray-200 rounded-l-lg items-center justify-center"
-        >
-          <Text className="text-2xl font-bold text-gray-700">−</Text>
-        </TouchableOpacity>
-        <TextInput
-          value={textValue}
-          onChangeText={handleTextChange}
-          onBlur={handleBlur}
-          keyboardType={isInteger ? "number-pad" : "decimal-pad"}
-          selectTextOnFocus
-          style={{
-            width: 70,
-            height: 48,
-            backgroundColor: "white",
-            borderTopWidth: 1,
-            borderBottomWidth: 1,
-            borderColor: "#E5E5E5",
-            textAlign: "center",
-            fontSize: 18,
-            fontWeight: "600",
-            paddingVertical: 0,
-          }}
-        />
-        <TouchableOpacity
-          onPress={increment}
-          className="w-12 h-12 bg-blue-500 rounded-r-lg items-center justify-center"
-        >
-          <Text className="text-2xl font-bold text-white">+</Text>
-        </TouchableOpacity>
-        {unit && <Text className="text-gray-600 ml-2 w-10">{unit}</Text>}
-      </View>
-    </View>
-  );
-};
-
-// Set Row Component
-const SetRow = ({
-  setData,
-  setIndex,
-  equipmentType,
-  weightUnit,
-  onUpdate,
-  onRemove,
-  canRemove,
-}: {
-  setData: SetData;
-  setIndex: number;
-  equipmentType: string;
-  weightUnit: "kg" | "lbs";
-  onUpdate: (updated: SetData) => void;
-  onRemove: () => void;
-  canRemove: boolean;
-}) => {
-  // Calculate weight increment based on unit and equipment type
-  const getWeightStep = () => {
-    if (weightUnit === "kg") {
-      return 1;
-    } else {
-      return equipmentType === "machine" ? 5 : 2.5;
-    }
-  };
-
-  const weightStep = getWeightStep();
-
-  return (
-    <View className="bg-gray-50 rounded-lg p-3 mb-2">
-      <View className="flex-row justify-between items-center mb-2">
-        <Text className="font-semibold text-gray-800">Set {setIndex + 1}</Text>
-        {canRemove && (
-          <TouchableOpacity onPress={onRemove}>
-            <Text className="text-red-500 text-sm">Remove</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <NumberInput
-        label="Weight"
-        value={setData.weight}
-        step={weightStep}
-        unit={weightUnit}
-        isInteger={weightUnit === "kg"}
-        onChange={(val) => onUpdate({ ...setData, weight: val })}
-      />
-
-      <NumberInput
-        label="Reps"
-        value={setData.reps}
-        step={1}
-        max={100}
-        isInteger={true}
-        onChange={(val) => onUpdate({ ...setData, reps: Math.floor(val) })}
-      />
-
-      <NumberInput
-        label="Half"
-        value={setData.halfReps}
-        step={1}
-        max={50}
-        isInteger={true}
-        onChange={(val) => onUpdate({ ...setData, halfReps: Math.floor(val) })}
-      />
-    </View>
-  );
-};
-
-// Exercise Card Component
-const ExerciseCard = ({
-  exercise,
-  weightUnit,
-  onUpdate,
-}: {
-  exercise: ExerciseRecord;
-  weightUnit: "kg" | "lbs";
-  onUpdate: (updated: ExerciseRecord) => void;
-}) => {
-  const addSet = () => {
-    const lastSet = exercise.sets[exercise.sets.length - 1];
-    const newSet: SetData = {
-      setNumber: exercise.sets.length + 1,
-      weight: lastSet?.weight || 0,
-      reps: lastSet?.reps || 0,
-      halfReps: 0,
-    };
-    onUpdate({ ...exercise, sets: [...exercise.sets, newSet] });
-  };
-
-  const updateSet = (setIndex: number, updated: SetData) => {
-    const newSets = [...exercise.sets];
-    newSets[setIndex] = updated;
-    onUpdate({ ...exercise, sets: newSets });
-  };
-
-  const removeSet = (setIndex: number) => {
-    const newSets = exercise.sets.filter((_, i) => i !== setIndex);
-    newSets.forEach((set, i) => (set.setNumber = i + 1));
-    onUpdate({ ...exercise, sets: newSets });
-  };
-
-  // Format date for display
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  return (
-    <View className="bg-white rounded-xl p-4 mb-4 shadow-sm">
-      <Text className="text-lg font-bold text-gray-800 mb-1">
-        {exercise.exerciseName}
-      </Text>
-      <Text className="text-xs text-gray-500 mb-3 capitalize">
-        {exercise.equipmentType}
-      </Text>
-
-      {/* Previous Records Section */}
-      {exercise.previousSets.length > 0 && (
-        <View className="bg-amber-50 rounded-lg p-3 mb-3 border border-amber-200">
-          <Text className="text-sm font-semibold text-amber-800 mb-2">
-            Previous ({formatDate(exercise.previousSets[0].date)})
-          </Text>
-          <View className="flex-row flex-wrap">
-            {exercise.previousSets.map((prevSet, idx) => (
-              <View
-                key={idx}
-                className="bg-white rounded px-2 py-1 mr-2 mb-1 border border-amber-300"
-              >
-                <Text className="text-xs text-gray-600">
-                  Set {prevSet.setNumber}: {prevSet.weight}
-                  {weightUnit} × {prevSet.reps}
-                  {prevSet.halfReps > 0 ? ` + ${prevSet.halfReps}½` : ""}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* Current Sets Input */}
-      {exercise.sets.map((set, index) => (
-        <SetRow
-          key={index}
-          setData={set}
-          setIndex={index}
-          equipmentType={exercise.equipmentType}
-          weightUnit={weightUnit}
-          onUpdate={(updated) => updateSet(index, updated)}
-          onRemove={() => removeSet(index)}
-          canRemove={exercise.sets.length > 1}
-        />
-      ))}
-
-      <TouchableOpacity
-        onPress={addSet}
-        className="py-2 items-center border-t border-gray-200 mt-2"
-      >
-        <Text className="text-blue-500 font-semibold">+ Add Set</Text>
-      </TouchableOpacity>
-    </View>
-  );
-};
-
-// Unit Toggle Component
-const UnitToggle = ({
-  unit,
-  onToggle,
-}: {
-  unit: "kg" | "lbs";
-  onToggle: () => void;
-}) => (
-  <View className="flex-row items-center justify-center mb-4">
-    <Text className="text-gray-600 mr-3">Weight Unit:</Text>
-    <TouchableOpacity
-      onPress={onToggle}
-      className="flex-row bg-gray-200 rounded-full p-1"
-    >
-      <View
-        className={`px-4 py-2 rounded-full ${
-          unit === "kg" ? "bg-blue-500" : "bg-transparent"
-        }`}
-      >
-        <Text
-          className={`font-semibold ${
-            unit === "kg" ? "text-white" : "text-gray-600"
-          }`}
-        >
-          kg
-        </Text>
-      </View>
-      <View
-        className={`px-4 py-2 rounded-full ${
-          unit === "lbs" ? "bg-blue-500" : "bg-transparent"
-        }`}
-      >
-        <Text
-          className={`font-semibold ${
-            unit === "lbs" ? "text-white" : "text-gray-600"
-          }`}
-        >
-          lbs
-        </Text>
-      </View>
-    </TouchableOpacity>
-  </View>
-);
+interface WorkoutSession {
+  date: string;
+  workoutId: number;
+  workoutName: string;
+}
 
 const MainView = () => {
   const db = useSQLiteContext();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [savedWorkouts, setSavedWorkouts] = useState<SavedWorkout[]>([]);
   const [selectedWorkout, setSelectedWorkout] = useState<SavedWorkout | null>(
@@ -378,27 +44,39 @@ const MainView = () => {
   const [exerciseRecords, setExerciseRecords] = useState<ExerciseRecord[]>([]);
   const [weightUnit, setWeightUnit] = useState<"kg" | "lbs">("kg");
   const [draftLoaded, setDraftLoaded] = useState(false);
+  const [recentSessions, setRecentSessions] = useState<WorkoutSession[]>([]);
+  const backPressedRef = useRef(false);
 
-  // Load saved draft on mount
-  useEffect(() => {
-    const loadDraft = async () => {
-      try {
-        const draftJson = await AsyncStorage.getItem(DRAFT_STORAGE_KEY);
-        if (draftJson) {
-          const draft = JSON.parse(draftJson);
-          if (draft.selectedWorkout && draft.exerciseRecords) {
-            setSelectedWorkout(draft.selectedWorkout);
-            setExerciseRecords(draft.exerciseRecords);
+  // Load saved draft when screen comes into focus (if no active workout)
+  useFocusEffect(
+    useCallback(() => {
+      const loadDraftIfNeeded = async () => {
+        // Skip draft load when back was intentionally pressed
+        if (backPressedRef.current) {
+          backPressedRef.current = false;
+          setDraftLoaded(true);
+          return;
+        }
+        // Only load draft if no workout is currently active
+        if (selectedWorkout === null) {
+          try {
+            const draftJson = await AsyncStorage.getItem(DRAFT_STORAGE_KEY);
+            if (draftJson) {
+              const draft = JSON.parse(draftJson);
+              if (draft.selectedWorkout && draft.exerciseRecords) {
+                setSelectedWorkout(draft.selectedWorkout);
+                setExerciseRecords(draft.exerciseRecords);
+              }
+            }
+          } catch (error) {
+            console.error("Failed to load draft:", error);
           }
         }
-      } catch (error) {
-        console.error("Failed to load draft:", error);
-      } finally {
         setDraftLoaded(true);
-      }
-    };
-    loadDraft();
-  }, []);
+      };
+      loadDraftIfNeeded();
+    }, [])
+  );
 
   // Auto-save draft whenever workout data changes
   useEffect(() => {
@@ -481,6 +159,23 @@ const MainView = () => {
       });
 
       setSavedWorkouts(Object.values(grouped));
+
+      // Fetch recent workout sessions
+      const sessions = await db.getAllAsync<{
+        date: string;
+        workoutId: number;
+        workoutName: string;
+      }>(`
+        SELECT DISTINCT
+          r.date,
+          r.workout_id AS workoutId,
+          w.name AS workoutName
+        FROM Records r
+        JOIN Workouts w ON r.workout_id = w.id
+        ORDER BY r.date DESC
+        LIMIT 10
+      `);
+      setRecentSessions(sessions);
     } catch (error) {
       console.error("Failed to fetch workouts:", error);
     } finally {
@@ -580,8 +275,9 @@ const MainView = () => {
 
   // Go back to workout selection (keeps draft saved)
   const handleBack = () => {
+    backPressedRef.current = true;
     setSelectedWorkout(null);
-    // Don't clear exerciseRecords - they're auto-saved as draft
+    setExerciseRecords([]);
   };
 
   // Discard current draft and start fresh
@@ -674,7 +370,7 @@ const MainView = () => {
               </Text>
             </View>
           ) : (
-            <View>
+            <ScrollView showsVerticalScrollIndicator={false}>
               <Text className="text-gray-600 mb-2">Select a workout:</Text>
               <Dropdown
                 data={savedWorkouts}
@@ -693,7 +389,53 @@ const MainView = () => {
                 placeholderStyle={{ color: "#999" }}
                 selectedTextStyle={{ color: "#000" }}
               />
-            </View>
+
+              {/* Recent Workouts Section */}
+              {recentSessions.length > 0 && (
+                <View className="mt-8">
+                  <Text className="text-xl font-bold text-gray-800 mb-4">
+                    Recent Workouts
+                  </Text>
+                  {recentSessions.map((session, index) => (
+                    <TouchableOpacity
+                      key={`${session.date}-${session.workoutId}`}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/(tabs)/edit-record",
+                          params: {
+                            date: session.date,
+                            workoutId: session.workoutId.toString(),
+                            workoutName: session.workoutName,
+                          },
+                        })
+                      }
+                      className="bg-white rounded-xl p-4 mb-3 flex-row justify-between items-center"
+                      style={{
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.05,
+                        shadowRadius: 2,
+                        elevation: 1,
+                      }}
+                    >
+                      <View>
+                        <Text className="text-lg font-semibold text-gray-800">
+                          {session.workoutName}
+                        </Text>
+                        <Text className="text-sm text-gray-500">
+                          {new Date(session.date).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </Text>
+                      </View>
+                      <Text className="text-gray-400 text-xl">→</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </ScrollView>
           )}
         </View>
       ) : (

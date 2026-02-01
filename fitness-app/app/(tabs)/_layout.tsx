@@ -32,6 +32,14 @@ const _layout = () => {
           href: null, // Hide from tab bar - accessed via modal
         }}
       />
+      <Tabs.Screen
+        name="edit-record"
+        options={{
+          title: "Edit Workout",
+          headerTitleAlign: "center",
+          href: null, // Hide from tab bar - accessed via navigation
+        }}
+      />
     </Tabs>
   );
 };
