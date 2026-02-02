@@ -1,16 +1,24 @@
+import { SQLiteDatabase, SQLiteProvider, useSQLiteContext } from "expo-sqlite";
+import React, { useCallback, useEffect, useState } from "react";
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
-  Button,
-  Alert,
-  ActivityIndicator,
-  StyleSheet,
   TouchableOpacity,
+  View,
 } from "react-native";
-import React, { useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { SQLiteDatabase, SQLiteProvider, useSQLiteContext } from "expo-sqlite";
+import { EditWorkoutView } from "./edit-workout";
+
+interface SavedWorkout {
+  id: number;
+  name: string;
+  exercises: { id: number; name: string }[];
+}
 
 const EditProfileButton = ({ setIsEditing, setForm, existingUser }: any) => (
   <TouchableOpacity
@@ -39,24 +47,36 @@ const SaveAndCancelButton = ({ handleOnSave, handleOnCancel }: any) => (
   </View>
 );
 
-// Props of a component comes in as a one JSON argument, so if you are using a prop to pass in neccessary arguments for a function
-// you must destruct the variables inside a curly bracket to indicate that you are working with diff vars within one JSON.
-// For typescript, you must give the type definition as a json object of the same structure with the varaible's type indicated
-// after the name of the variable followed by a colon
+// Saved Workout Plan Card
+const SavedPlanCard = ({ workout }: { workout: SavedWorkout }) => (
+  <View className="bg-white rounded-xl p-4 mb-3 shadow-sm">
+    <Text className="text-lg font-bold text-gray-800 mb-2">{workout.name}</Text>
+    <View className="border-t border-gray-100 pt-2">
+      {workout.exercises.map((ex, index) => (
+        <View
+          key={`${workout.id}-${ex.id}-${index}`}
+          className="flex-row items-center py-1"
+        >
+          <Text className="text-blue-500 mr-2">•</Text>
+          <Text className="text-gray-600">{ex.name}</Text>
+        </View>
+      ))}
+      {workout.exercises.length === 0 && (
+        <Text className="text-gray-400 italic">No exercises added</Text>
+      )}
+    </View>
+  </View>
+);
+
 const UserDetails = ({
   isEditing,
   setIsEditing,
-
   existingUser,
-
   handleOnSaveChanges,
   handleOnCancelChanges,
-
   form,
   setForm,
 }: any) => {
-  // A reusable sub-component for the table rows
-  //   hello
   const InfoRow = ({
     label,
     value,
@@ -116,7 +136,6 @@ const UserDetails = ({
       ) : (
         <InfoRow label="Last Name" value={existingUser.lastName} />
       )}
-      {/* Example of adding more data later */}
       <InfoRow label="Status" value="Active" isLast={true} />
       {!isEditing ? (
         <EditProfileButton
@@ -136,19 +155,26 @@ const UserDetails = ({
 
 const UserForm = ({ form, setForm, handleSubmitNewUser }: any) => {
   return (
-    <View>
+    <View className="w-4/5 bg-white rounded-xl p-4">
+      <Text className="text-lg font-bold mb-4">Create Profile</Text>
       <TextInput
+        className="border border-gray-300 rounded-lg p-3 mb-3"
         placeholder="First Name"
         value={form.firstName}
         onChangeText={(text) => setForm({ ...form, firstName: text })}
-        // when you want to update the state, you must change the entire state, and if you want to leave some components within the state unchanged, you would have to create a shallow copy of the entire object and alter the specific components to the desired value
       />
       <TextInput
+        className="border border-gray-300 rounded-lg p-3 mb-4"
         placeholder="Last Name"
         value={form.lastName}
         onChangeText={(text) => setForm({ ...form, lastName: text })}
       />
-      <Button title="Add User" onPress={handleSubmitNewUser} />
+      <TouchableOpacity
+        className="bg-blue-500 py-3 rounded-lg items-center"
+        onPress={handleSubmitNewUser}
+      >
+        <Text className="text-white font-semibold">Create Profile</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -162,46 +188,91 @@ const ProfileView = () => {
   const [existingUser, setExistingUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [savedWorkouts, setSavedWorkouts] = useState<SavedWorkout[]>([]);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const db = useSQLiteContext();
 
-  //   check if the user already exists and update the existing user state
+  // Fetch saved workouts
+  const fetchSavedWorkouts = useCallback(async () => {
+    try {
+      const result = await db.getAllAsync<{
+        workoutId: number;
+        workoutName: string;
+        exerciseId: number;
+        exerciseName: string;
+      }>(`
+        SELECT
+          w.id AS workoutId,
+          w.name AS workoutName,
+          e.id AS exerciseId,
+          e.name AS exerciseName
+        FROM Workouts w
+        LEFT JOIN Workout_Exercises we ON w.id = we.workout_id
+        LEFT JOIN Exercises e ON we.exercise_id = e.id
+        ORDER BY w.id DESC
+      `);
+
+      // Group by workout
+      const grouped: { [key: number]: SavedWorkout } = {};
+      result.forEach((row) => {
+        if (!grouped[row.workoutId]) {
+          grouped[row.workoutId] = {
+            id: row.workoutId,
+            name: row.workoutName,
+            exercises: [],
+          };
+        }
+        if (row.exerciseId && row.exerciseName) {
+          grouped[row.workoutId].exercises.push({
+            id: row.exerciseId,
+            name: row.exerciseName,
+          });
+        }
+      });
+
+      setSavedWorkouts(Object.values(grouped));
+    } catch (error) {
+      console.error("Failed to fetch workouts:", error);
+    }
+  }, [db]);
+
+  // Check if the user already exists and update the existing user state
   useEffect(() => {
     const checkUser = async () => {
       try {
         const result = await db.getFirstAsync("SELECT * FROM users LIMIT 1");
         setExistingUser(result);
+        await fetchSavedWorkouts();
       } catch (Error) {
         console.log(Error);
       } finally {
         setIsLoading(false);
-        //   it is the best practice to return the ui componenets outside of the useEffect function
       }
     };
     checkUser();
-  }, []);
+  }, [db, fetchSavedWorkouts]);
 
-  //   ui for loading when the api tries to access the database
   if (isLoading) {
     return (
-      <View className="flex-1 justify-center ">
+      <View className="flex-1 justify-center">
         <ActivityIndicator size="large" color="#0000ff" />
       </View>
     );
   }
 
-  //   logic for handling submitting a new user info
   const handleSubmitNewUser = async () => {
     try {
       if (!form.firstName || !form.lastName) {
         throw new Error("All fields are required");
       }
       await db.runAsync(
-        `
-                            INSERT INTO users (firstName, lastName) VALUES (?,?)`,
+        `INSERT INTO users (firstName, lastName, weight_unit) VALUES (?, ?, 'kg')`,
         [form.firstName, form.lastName]
       );
       Alert.alert("Success", "User data saved successful");
+      const newUser = await db.getFirstAsync("SELECT * FROM users LIMIT 1");
+      setExistingUser(newUser);
       setForm({
         firstName: "",
         lastName: "",
@@ -214,13 +285,12 @@ const ProfileView = () => {
       );
     }
   };
-  // logic for handling saving changes
+
   const handleOnSaveChanges = async () => {
     try {
       if (!form.firstName || !form.lastName) {
         throw new Error("All fields are required");
       }
-      //   this is how you would go on to update data in a database
       await db.runAsync(
         `UPDATE users SET firstName = ?, lastName = ? WHERE id = ?`,
         [form.firstName, form.lastName, existingUser.id]
@@ -233,7 +303,7 @@ const ProfileView = () => {
       Alert.alert("Error", "failed to save changes");
     }
   };
-  //   logic for handling canceling changes
+
   const handleOnCancelChanges = async () => {
     setForm({
       firstName: existingUser.firstName,
@@ -242,56 +312,120 @@ const ProfileView = () => {
     setIsEditing(false);
   };
 
-  // you have to put the return statement in front of the ternary operator
-  // ternary operator will return either one of the components as the result of the if-statement logic, but without the return statement, the data will go nowhere
-  return existingUser ? (
-    <UserDetails
-      isEditing={isEditing}
-      setIsEditing={setIsEditing}
-      existingUser={existingUser}
-      handleOnSaveChanges={handleOnSaveChanges}
-      handleOnCancelChanges={handleOnCancelChanges}
-      form={form}
-      setForm={setForm}
-    />
-  ) : (
-    <UserForm
-      form={form}
-      setForm={setForm}
-      handleSubmitNewUser={handleSubmitNewUser}
-    />
+  const handleCloseModal = async () => {
+    setShowEditModal(false);
+    // Refresh workouts after modal closes
+    await fetchSavedWorkouts();
+  };
+
+  return (
+    <ScrollView
+      className="flex-1 w-full"
+      contentContainerStyle={{ alignItems: "center", paddingBottom: 40 }}
+    >
+      {existingUser ? (
+        <>
+          <UserDetails
+            isEditing={isEditing}
+            setIsEditing={setIsEditing}
+            existingUser={existingUser}
+            handleOnSaveChanges={handleOnSaveChanges}
+            handleOnCancelChanges={handleOnCancelChanges}
+            form={form}
+            setForm={setForm}
+          />
+
+          {/* Workout Plans Section */}
+          <View className="w-4/5 mt-4">
+            <View className="flex-row justify-between items-center mb-3">
+              <Text className="text-lg font-bold text-gray-800">
+                Workout Plans
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowEditModal(true)}
+                className="bg-blue-500 px-4 py-2 rounded-lg"
+              >
+                <Text className="text-white font-semibold">Edit Plans</Text>
+              </TouchableOpacity>
+            </View>
+
+            {savedWorkouts.length === 0 ? (
+              <View className="bg-white rounded-xl p-6 items-center">
+                <Text className="text-gray-500 text-center mb-4">
+                  No workout plans yet
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowEditModal(true)}
+                  className="bg-blue-500 px-6 py-3 rounded-lg"
+                >
+                  <Text className="text-white font-semibold">
+                    Create Your First Plan
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              savedWorkouts.map((workout) => (
+                <SavedPlanCard key={workout.id} workout={workout} />
+              ))
+            )}
+          </View>
+
+          {/* Edit Workout Modal */}
+          <Modal
+            visible={showEditModal}
+            animationType="slide"
+            presentationStyle="pageSheet"
+            onRequestClose={handleCloseModal}
+          >
+            <SafeAreaView className="flex-1">
+              <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-200">
+                <TouchableOpacity onPress={handleCloseModal}>
+                  <Text className="text-blue-500 text-lg">Done</Text>
+                </TouchableOpacity>
+                <Text className="text-lg font-bold">Edit Workout Plans</Text>
+                <View className="w-12" />
+              </View>
+              <EditWorkoutView />
+            </SafeAreaView>
+          </Modal>
+        </>
+      ) : (
+        <UserForm
+          form={form}
+          setForm={setForm}
+          handleSubmitNewUser={handleSubmitNewUser}
+        />
+      )}
+    </ScrollView>
   );
 };
 
 const Profile = () => {
-  // user database name
-  const userDB = "userDatabase.db";
-  //   states
+  const userDB = "userDatabase7.db";
 
   const handleOnInit = async (db: SQLiteDatabase) => {
     try {
       await db.execAsync(`
-            PRAGMA journal_mode = WAL;
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                firstName TEXT NOT NULL,
-                lastName TEXT NOT NULL
-            );
-            `);
+        PRAGMA journal_mode = WAL;
+        CREATE TABLE IF NOT EXISTS users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          firstName TEXT NOT NULL,
+          lastName TEXT NOT NULL,
+          weight_unit TEXT DEFAULT 'kg'
+        );
+      `);
     } catch (Error: any) {
       console.log(Error);
     }
   };
 
   return (
-    <SafeAreaView className="justify-center items-center">
+    <SafeAreaView className="flex-1 items-center bg-gray-100">
       <SQLiteProvider
         databaseName={userDB}
         onInit={handleOnInit}
         options={{
-          useNewConnection: false, // this would restablish a connection even when a connection already exists with a database
-          //   you might want to turn this as true when you are daeling with heavy background processing. However, one must be careful with
-          // multiple connections as
+          useNewConnection: false,
         }}
       >
         <ProfileView />
@@ -301,7 +435,6 @@ const Profile = () => {
 };
 
 const styles = StyleSheet.create({
-  // styles related to tables
   tableContainer: {
     width: "80%",
     backgroundColor: "#ffffff",
@@ -339,14 +472,12 @@ const styles = StyleSheet.create({
     color: "#333",
     fontWeight: "600",
   },
-
-  //   styles related to buttons
   buttonContainer: {
     marginTop: 20,
-    gap: 12, // Adds space between buttons
+    gap: 12,
   },
   editButton: {
-    backgroundColor: "#007AFF", // Classic iOS Blue
+    backgroundColor: "#007AFF",
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: "center",
@@ -354,7 +485,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 5,
-    elevation: 3, // Android shadow
+    elevation: 3,
   },
   editText: {
     color: "#FFFFFF",
@@ -367,7 +498,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#FF3B30", // Danger Red
+    borderColor: "#FF3B30",
   },
   deleteText: {
     color: "#FF3B30",
