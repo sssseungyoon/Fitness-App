@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { SQLiteProvider, useSQLiteContext } from "expo-sqlite";
+import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -16,19 +16,15 @@ import {
   UnitToggle,
 } from "../components/workout-input";
 
-interface EditRecordViewProps {
-  date: string;
-  workoutId: string;
-  workoutName: string;
-}
-
-const EditRecordView = ({
-  date,
-  workoutId,
-  workoutName,
-}: EditRecordViewProps) => {
+export default function EditRecord() {
   const db = useSQLiteContext();
   const router = useRouter();
+  const { date, workoutId, workoutName } = useLocalSearchParams<{
+    date: string;
+    workoutId: string;
+    workoutName: string;
+  }>();
+
   const [isLoading, setIsLoading] = useState(true);
   const [exerciseRecords, setExerciseRecords] = useState<ExerciseRecord[]>([]);
   const [weightUnit, setWeightUnit] = useState<"kg" | "lbs">("kg");
@@ -52,19 +48,25 @@ const EditRecordView = ({
         exerciseId: number;
         exerciseName: string;
         equipmentType: string;
+        isIsolation: number;
         setNumber: number;
         weight: number;
         reps: number;
         halfReps: number;
+        leftReps: number | null;
+        rightReps: number | null;
       }>(
         `SELECT
           r.exercise_id AS exerciseId,
           e.name AS exerciseName,
           e.equipment_type AS equipmentType,
+          COALESCE(e.is_isolation, 0) AS isIsolation,
           r.set_number AS setNumber,
           r.weight,
           r.reps,
-          r.half_reps AS halfReps
+          r.half_reps AS halfReps,
+          r.left_reps AS leftReps,
+          r.right_reps AS rightReps
         FROM Records r
         JOIN Exercises e ON r.exercise_id = e.id
         WHERE r.date = ? AND r.workout_id = ?
@@ -75,11 +77,13 @@ const EditRecordView = ({
       // Group by exercise
       const grouped: { [key: number]: ExerciseRecord } = {};
       records.forEach((row) => {
+        const isIsolation = row.isIsolation === 1;
         if (!grouped[row.exerciseId]) {
           grouped[row.exerciseId] = {
             exerciseId: row.exerciseId,
             exerciseName: row.exerciseName,
             equipmentType: row.equipmentType,
+            isIsolation,
             sets: [],
             previousSets: [], // No previous sets for editing
           };
@@ -89,6 +93,8 @@ const EditRecordView = ({
           weight: row.weight || 0,
           reps: row.reps || 0,
           halfReps: row.halfReps || 0,
+          leftReps: isIsolation ? (row.leftReps ?? 0) : undefined,
+          rightReps: isIsolation ? (row.rightReps ?? 0) : undefined,
         });
       });
 
@@ -143,8 +149,8 @@ const EditRecordView = ({
         for (const exercise of exerciseRecords) {
           for (const set of exercise.sets) {
             await db.runAsync(
-              `INSERT INTO Records (date, workout_id, exercise_id, weight, set_number, reps, half_reps)
-               VALUES (?, ?, ?, ?, ?, ?, ?)`,
+              `INSERT INTO Records (date, workout_id, exercise_id, weight, set_number, reps, half_reps, left_reps, right_reps)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
               [
                 date,
                 parseInt(workoutId),
@@ -153,6 +159,8 @@ const EditRecordView = ({
                 set.setNumber,
                 set.reps,
                 set.halfReps,
+                set.leftReps ?? null,
+                set.rightReps ?? null,
               ]
             );
           }
@@ -218,7 +226,7 @@ const EditRecordView = ({
   }
 
   return (
-    <>
+    <SafeAreaView className="flex-1 bg-gray-100" edges={["bottom"]}>
       <ScrollView className="flex-1 p-4" keyboardShouldPersistTaps="handled">
         <View className="flex-row justify-between items-center mb-2">
           <TouchableOpacity onPress={() => router.back()}>
@@ -261,27 +269,6 @@ const EditRecordView = ({
           </Text>
         </TouchableOpacity>
       </View>
-    </>
-  );
-};
-
-export default function EditRecord() {
-  const userDB = "userDatabase7.db";
-  const { date, workoutId, workoutName } = useLocalSearchParams<{
-    date: string;
-    workoutId: string;
-    workoutName: string;
-  }>();
-
-  return (
-    <SafeAreaView className="flex-1 bg-gray-100" edges={["bottom"]}>
-      <SQLiteProvider databaseName={userDB}>
-        <EditRecordView
-          date={date || ""}
-          workoutId={workoutId || ""}
-          workoutName={workoutName || ""}
-        />
-      </SQLiteProvider>
     </SafeAreaView>
   );
 }

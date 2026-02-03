@@ -20,6 +20,8 @@ export const ExerciseCard = ({
       weight: lastSet?.weight || 0,
       reps: lastSet?.reps || 0,
       halfReps: 0,
+      leftReps: exercise.isIsolation ? (lastSet?.leftReps || 0) : undefined,
+      rightReps: exercise.isIsolation ? (lastSet?.rightReps || 0) : undefined,
     };
     onUpdate({ ...exercise, sets: [...exercise.sets, newSet] });
   };
@@ -45,6 +47,14 @@ export const ExerciseCard = ({
     });
   };
 
+  // Format reps display based on isolation status
+  const formatReps = (prevSet: typeof exercise.previousSets[0]) => {
+    if (exercise.isIsolation && (prevSet.leftReps !== undefined || prevSet.rightReps !== undefined)) {
+      return `L:${prevSet.leftReps ?? 0} R:${prevSet.rightReps ?? 0}`;
+    }
+    return `${prevSet.reps}`;
+  };
+
   return (
     <View className="bg-white rounded-xl p-4 mb-4 shadow-sm">
       <Text className="text-lg font-bold text-gray-800 mb-1">
@@ -52,6 +62,7 @@ export const ExerciseCard = ({
       </Text>
       <Text className="text-xs text-gray-500 mb-3 capitalize">
         {exercise.equipmentType}
+        {exercise.isIsolation && " • Isolation"}
       </Text>
 
       {/* Previous Records Section */}
@@ -68,7 +79,7 @@ export const ExerciseCard = ({
               >
                 <Text className="text-xs text-gray-600">
                   Set {prevSet.setNumber}: {prevSet.weight}
-                  {weightUnit} × {prevSet.reps}
+                  {weightUnit} × {formatReps(prevSet)}
                   {prevSet.halfReps > 0 ? ` + ${prevSet.halfReps}½` : ""}
                 </Text>
               </View>
@@ -85,6 +96,7 @@ export const ExerciseCard = ({
           setIndex={index}
           equipmentType={exercise.equipmentType}
           weightUnit={weightUnit}
+          isIsolation={exercise.isIsolation}
           onUpdate={(updated) => updateSet(index, updated)}
           onRemove={() => removeSet(index)}
           canRemove={exercise.sets.length > 1}

@@ -1,5 +1,5 @@
 import { useFocusEffect } from "expo-router";
-import { SQLiteProvider, useSQLiteContext } from "expo-sqlite";
+import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -35,7 +35,7 @@ interface ExerciseDetail {
   }[];
 }
 
-const CalendarView = () => {
+export default function Calendar() {
   const db = useSQLiteContext();
   const [isLoading, setIsLoading] = useState(true);
   const [sessionsByMonth, setSessionsByMonth] = useState<SessionsByMonth>({});
@@ -190,7 +190,7 @@ const CalendarView = () => {
   const monthKeys = Object.keys(sessionsByMonth).sort().reverse();
 
   return (
-    <>
+    <SafeAreaView className="flex-1 bg-gray-100" edges={["bottom"]}>
       <ScrollView className="flex-1 p-4">
         <Text className="text-2xl font-bold text-gray-800 mb-6 text-center">
           History
@@ -312,18 +312,6 @@ const CalendarView = () => {
           </ScrollView>
         </SafeAreaView>
       </Modal>
-    </>
-  );
-};
-
-export default function Calendar() {
-  const userDB = "userDatabase7.db";
-
-  return (
-    <SafeAreaView className="flex-1 bg-gray-100" edges={["bottom"]}>
-      <SQLiteProvider databaseName={userDB}>
-        <CalendarView />
-      </SQLiteProvider>
     </SafeAreaView>
   );
 }

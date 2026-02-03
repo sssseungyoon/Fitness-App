@@ -1,4 +1,4 @@
-import { SQLiteDatabase, SQLiteProvider, useSQLiteContext } from "expo-sqlite";
+import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -6,6 +6,7 @@ import {
   Modal,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -42,26 +43,6 @@ const EQUIPMENT_TYPES = [
   { label: "Bodyweight", value: "bodyweight" },
 ];
 
-const bulkImportExercises = async (db: SQLiteDatabase, exerciseList: any[]) => {
-  try {
-    await db.withTransactionAsync(async () => {
-      for (const ex of exerciseList) {
-        await db.runAsync(
-          "INSERT OR IGNORE INTO Exercises (name, muscle_group, equipment_type) VALUES (?, ?, ?)",
-          [
-            ex.name || "", // Fallback to empty string
-            ex.muscle_group ?? null, // Use null instead of undefined
-            ex.equipment_type ?? null, // Use null instead of undefined
-          ]
-        );
-      }
-    });
-    console.log(`${exerciseList.length} exercises checked/imported!`);
-  } catch (error) {
-    console.error("Bulk import failed:", error);
-  }
-};
-
 interface Exercise {
   id: number;
   name: string;
@@ -69,324 +50,6 @@ interface Exercise {
   equipment_type: string;
   is_custom: number;
 }
-const exerciseList: any = [
-  // --- CHEST ---
-  { name: "Bench Press", muscle_group: "chest", equipment_type: "free-weight" },
-  {
-    name: "Incline Bench Press",
-    muscle_group: "chest",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Decline Bench Press",
-    muscle_group: "chest",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Dumbbell Chest Press",
-    muscle_group: "chest",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Incline Dumbbell Press",
-    muscle_group: "chest",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Dumbbell Chest Fly",
-    muscle_group: "chest",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Machine Chest Press",
-    muscle_group: "chest",
-    equipment_type: "machine",
-  },
-  {
-    name: "Machine Chest Fly",
-    muscle_group: "chest",
-    equipment_type: "machine",
-  },
-  { name: "Pec Deck", muscle_group: "chest", equipment_type: "machine" },
-  {
-    name: "Cable Chest Press",
-    muscle_group: "chest",
-    equipment_type: "machine",
-  },
-  { name: "Push-Up", muscle_group: "chest", equipment_type: "bodyweight" },
-  { name: "Dips", muscle_group: "chest", equipment_type: "bodyweight" },
-
-  // --- BACK ---
-  { name: "Deadlift", muscle_group: "back", equipment_type: "free-weight" },
-  { name: "Pull-Up", muscle_group: "back", equipment_type: "bodyweight" },
-  { name: "Chin-Up", muscle_group: "back", equipment_type: "bodyweight" },
-  { name: "Lat Pulldown", muscle_group: "back", equipment_type: "machine" },
-  {
-    name: "Close-Grip Lat Pulldown",
-    muscle_group: "back",
-    equipment_type: "machine",
-  },
-  {
-    name: "Single-Arm Lat Pulldown",
-    muscle_group: "back",
-    equipment_type: "machine",
-  },
-  {
-    name: "Straight Arm Pulldown",
-    muscle_group: "back",
-    equipment_type: "machine",
-  },
-  { name: "Barbell Row", muscle_group: "back", equipment_type: "free-weight" },
-  { name: "Dumbbell Row", muscle_group: "back", equipment_type: "free-weight" },
-  { name: "Seated Cable Row", muscle_group: "back", equipment_type: "machine" },
-  { name: "T-Bar Row", muscle_group: "back", equipment_type: "free-weight" },
-  {
-    name: "Bent Over Row",
-    muscle_group: "back",
-    equipment_type: "free-weight",
-  },
-  { name: "Meadows Row", muscle_group: "back", equipment_type: "free-weight" },
-  {
-    name: "Chest-Supported Row",
-    muscle_group: "back",
-    equipment_type: "machine",
-  },
-  { name: "Inverted Row", muscle_group: "back", equipment_type: "bodyweight" },
-  {
-    name: "Back Extension",
-    muscle_group: "back",
-    equipment_type: "bodyweight",
-  },
-  {
-    name: "Dumbbell Shrugs",
-    muscle_group: "back",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Barbell Shrugs",
-    muscle_group: "back",
-    equipment_type: "free-weight",
-  },
-  { name: "Rack Pulls", muscle_group: "back", equipment_type: "free-weight" },
-
-  // --- SHOULDERS ---
-  {
-    name: "Overhead Press",
-    muscle_group: "shoulders",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Dumbbell Shoulder Press",
-    muscle_group: "shoulders",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Arnold Press",
-    muscle_group: "shoulders",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Dumbbell Lateral Raise",
-    muscle_group: "shoulders",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Dumbbell Front Raise",
-    muscle_group: "shoulders",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Dumbbell Rear Delt Row",
-    muscle_group: "shoulders",
-    equipment_type: "free-weight",
-  },
-  { name: "Face Pull", muscle_group: "shoulders", equipment_type: "machine" },
-  {
-    name: "Reverse Pec Deck",
-    muscle_group: "shoulders",
-    equipment_type: "machine",
-  },
-  {
-    name: "Cable Lateral Raise",
-    muscle_group: "shoulders",
-    equipment_type: "machine",
-  },
-  {
-    name: "Machine Shoulder Press",
-    muscle_group: "shoulders",
-    equipment_type: "machine",
-  },
-  {
-    name: "Push Press",
-    muscle_group: "shoulders",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Upright Row",
-    muscle_group: "shoulders",
-    equipment_type: "free-weight",
-  },
-
-  // --- ARMS ---
-  { name: "Barbell Curl", muscle_group: "arms", equipment_type: "free-weight" },
-  {
-    name: "Dumbbell Curl",
-    muscle_group: "arms",
-    equipment_type: "free-weight",
-  },
-  { name: "Hammer Curl", muscle_group: "arms", equipment_type: "free-weight" },
-  {
-    name: "Incline Dumbbell Curl",
-    muscle_group: "arms",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Preacher Curl",
-    muscle_group: "arms",
-    equipment_type: "free-weight",
-  },
-  { name: "Spider Curl", muscle_group: "arms", equipment_type: "free-weight" },
-  {
-    name: "Concentration Curl",
-    muscle_group: "arms",
-    equipment_type: "free-weight",
-  },
-  { name: "Cable Curl", muscle_group: "arms", equipment_type: "machine" },
-  {
-    name: "Machine Bicep Curl",
-    muscle_group: "arms",
-    equipment_type: "machine",
-  },
-  {
-    name: "Tricep Pushdown (Bar)",
-    muscle_group: "arms",
-    equipment_type: "machine",
-  },
-  {
-    name: "Tricep Pushdown (Rope)",
-    muscle_group: "arms",
-    equipment_type: "machine",
-  },
-  {
-    name: "Skull Crushers",
-    muscle_group: "arms",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Overhead Cable Extension",
-    muscle_group: "arms",
-    equipment_type: "machine",
-  },
-  {
-    name: "Dumbbell Overhead Extension",
-    muscle_group: "arms",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Close-Grip Bench Press",
-    muscle_group: "arms",
-    equipment_type: "free-weight",
-  },
-  { name: "JM Press", muscle_group: "arms", equipment_type: "free-weight" },
-  { name: "Bench Dip", muscle_group: "arms", equipment_type: "bodyweight" },
-  {
-    name: "Diamond Push-Up",
-    muscle_group: "arms",
-    equipment_type: "bodyweight",
-  },
-
-  // --- LEGS ---
-  { name: "Squat", muscle_group: "legs", equipment_type: "free-weight" },
-  { name: "Front Squat", muscle_group: "legs", equipment_type: "free-weight" },
-  { name: "Leg Press", muscle_group: "legs", equipment_type: "machine" },
-  { name: "Leg Extension", muscle_group: "legs", equipment_type: "machine" },
-  { name: "Lying Leg Curl", muscle_group: "legs", equipment_type: "machine" },
-  { name: "Seated Leg Curl", muscle_group: "legs", equipment_type: "machine" },
-  {
-    name: "Romanian Deadlift",
-    muscle_group: "legs",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Bulgarian Split Squat",
-    muscle_group: "legs",
-    equipment_type: "free-weight",
-  },
-  { name: "Goblet Squat", muscle_group: "legs", equipment_type: "free-weight" },
-  { name: "Lunges", muscle_group: "legs", equipment_type: "free-weight" },
-  { name: "Hack Squat", muscle_group: "legs", equipment_type: "machine" },
-  { name: "Step-Ups", muscle_group: "legs", equipment_type: "free-weight" },
-  { name: "Sissy Squat", muscle_group: "legs", equipment_type: "bodyweight" },
-  { name: "Sumo Squat", muscle_group: "legs", equipment_type: "free-weight" },
-
-  // --- GLUTES ---
-  { name: "Hip Thrust", muscle_group: "glutes", equipment_type: "free-weight" },
-  {
-    name: "Glute Bridge",
-    muscle_group: "glutes",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Cable Glute Kickback",
-    muscle_group: "glutes",
-    equipment_type: "machine",
-  },
-  {
-    name: "Hip Abduction Machine",
-    muscle_group: "glutes",
-    equipment_type: "machine",
-  },
-
-  // --- ABS ---
-  { name: "Plank", muscle_group: "abs", equipment_type: "bodyweight" },
-  { name: "Crunch", muscle_group: "abs", equipment_type: "bodyweight" },
-  { name: "Leg Raise", muscle_group: "abs", equipment_type: "bodyweight" },
-  {
-    name: "Hanging Leg Raise",
-    muscle_group: "abs",
-    equipment_type: "bodyweight",
-  },
-  { name: "Cable Crunch", muscle_group: "abs", equipment_type: "machine" },
-  { name: "Russian Twist", muscle_group: "abs", equipment_type: "free-weight" },
-  { name: "Bicycle Crunch", muscle_group: "abs", equipment_type: "bodyweight" },
-  { name: "Dead Bug", muscle_group: "abs", equipment_type: "bodyweight" },
-  {
-    name: "Ab Wheel Rollout",
-    muscle_group: "abs",
-    equipment_type: "free-weight",
-  },
-  { name: "Pallof Press", muscle_group: "abs", equipment_type: "machine" },
-  { name: "Woodchoppers", muscle_group: "abs", equipment_type: "machine" },
-
-  // --- CALVES ---
-  {
-    name: "Standing Calf Raise",
-    muscle_group: "calves",
-    equipment_type: "machine",
-  },
-  {
-    name: "Seated Calf Raise",
-    muscle_group: "calves",
-    equipment_type: "machine",
-  },
-  {
-    name: "Calf Raise in Leg Press",
-    muscle_group: "calves",
-    equipment_type: "machine",
-  },
-
-  // --- FOREARMS ---
-  {
-    name: "Barbell Wrist Curl",
-    muscle_group: "forearms",
-    equipment_type: "free-weight",
-  },
-  {
-    name: "Farmers Walk",
-    muscle_group: "forearms",
-    equipment_type: "free-weight",
-  },
-];
 
 interface Workout {
   rowId: number;
@@ -402,11 +65,17 @@ const AddExerciseModal = ({
 }: {
   visible: boolean;
   onClose: () => void;
-  onSave: (name: string, muscleGroup: string, equipmentType: string) => void;
+  onSave: (
+    name: string,
+    muscleGroup: string,
+    equipmentType: string,
+    isIsolation: boolean
+  ) => void;
 }) => {
   const [exerciseName, setExerciseName] = useState("");
   const [muscleGroup, setMuscleGroup] = useState<string | null>(null);
   const [equipmentType, setEquipmentType] = useState<string | null>(null);
+  const [isIsolation, setIsIsolation] = useState(false);
 
   const handleSave = () => {
     if (!exerciseName.trim()) {
@@ -421,17 +90,19 @@ const AddExerciseModal = ({
       Alert.alert("Error", "Please select an equipment type");
       return;
     }
-    onSave(exerciseName.trim(), muscleGroup, equipmentType);
+    onSave(exerciseName.trim(), muscleGroup, equipmentType, isIsolation);
     // Reset form
     setExerciseName("");
     setMuscleGroup(null);
     setEquipmentType(null);
+    setIsIsolation(false);
   };
 
   const handleClose = () => {
     setExerciseName("");
     setMuscleGroup(null);
     setEquipmentType(null);
+    setIsIsolation(false);
     onClose();
   };
 
@@ -492,6 +163,21 @@ const AddExerciseModal = ({
               onChange={(item) => setEquipmentType(item.value)}
             />
 
+            <View style={styles.isolationToggleRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>Isolation Exercise</Text>
+                <Text style={styles.isolationHint}>
+                  Track left/right reps separately
+                </Text>
+              </View>
+              <Switch
+                value={isIsolation}
+                onValueChange={setIsIsolation}
+                trackColor={{ false: "#DDD", true: "#007AFF" }}
+                thumbColor="#FFF"
+              />
+            </View>
+
             <TouchableOpacity
               style={[styles.primaryButton, { marginTop: 24 }]}
               onPress={handleSave}
@@ -505,7 +191,7 @@ const AddExerciseModal = ({
   );
 };
 
-const MainView = () => {
+export default function EditWorkout() {
   const db = useSQLiteContext();
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -524,7 +210,6 @@ const MainView = () => {
 
   const fetchSavedWorkouts = async () => {
     try {
-      // This query joins the junction table with the exercise names
       const result = await db.getAllAsync(`
       SELECT
         w.id AS workoutId,
@@ -543,7 +228,6 @@ const MainView = () => {
         exercises: { id: number; name: string }[];
       }
 
-      // Grouping the flat rows by Workout ID
       const grouped = result.reduce<{ [key: number]: GroupedWorkout }>(
         (acc: any, row: any) => {
           const { workoutId, workoutName, exerciseName, exerciseId } = row;
@@ -573,24 +257,9 @@ const MainView = () => {
 
   const fetchExercises = async () => {
     try {
-      // First check if is_custom column exists
-      const tableInfo = await db.getAllAsync<{ name: string }>(
-        "PRAGMA table_info(Exercises)"
+      const freshData = await db.getAllAsync<Exercise>(
+        "SELECT id, name, muscle_group, equipment_type, is_custom FROM Exercises ORDER BY is_custom DESC, muscle_group ASC, name ASC"
       );
-      const hasIsCustom = tableInfo.some((col) => col.name === "is_custom");
-      console.log("Has is_custom column:", hasIsCustom);
-
-      let freshData: Exercise[];
-      if (hasIsCustom) {
-        freshData = await db.getAllAsync<Exercise>(
-          "SELECT id, name, muscle_group, equipment_type, is_custom FROM Exercises ORDER BY is_custom DESC, muscle_group ASC, name ASC"
-        );
-      } else {
-        freshData = await db.getAllAsync<Exercise>(
-          "SELECT id, name, muscle_group, equipment_type, 0 as is_custom FROM Exercises ORDER BY muscle_group ASC, name ASC"
-        );
-      }
-      console.log("Fetched exercises:", freshData.length);
       setExercises(freshData);
     } catch (error) {
       console.error("Failed to fetch exercises:", error);
@@ -600,12 +269,13 @@ const MainView = () => {
   const saveCustomExercise = async (
     name: string,
     muscleGroup: string,
-    equipmentType: string
+    equipmentType: string,
+    isIsolation: boolean
   ) => {
     try {
       await db.runAsync(
-        "INSERT INTO Exercises (name, muscle_group, equipment_type, is_custom) VALUES (?, ?, ?, 1)",
-        [name, muscleGroup, equipmentType]
+        "INSERT INTO Exercises (name, muscle_group, equipment_type, is_custom, is_isolation) VALUES (?, ?, ?, 1, ?)",
+        [name, muscleGroup, equipmentType, isIsolation ? 1 : 0]
       );
       await fetchExercises();
       setShowAddExerciseModal(false);
@@ -648,8 +318,6 @@ const MainView = () => {
 
   // Prepare exercise list with custom exercises first, then add the "Add Custom" action item
   const getDropdownData = () => {
-    console.log("Exercises count:", exercises.length);
-    // Sort: custom first, then by muscle group
     const sorted = [...exercises].sort((a, b) => {
       if (a.is_custom && !b.is_custom) return -1;
       if (!a.is_custom && b.is_custom) return 1;
@@ -659,32 +327,18 @@ const MainView = () => {
   };
 
   useEffect(() => {
-    const setupDatabase = async () => {
+    const loadData = async () => {
       try {
-        console.log("Starting database setup...");
-        // Add is_custom column if it doesn't exist (for existing databases)
-        try {
-          await db.execAsync(
-            `ALTER TABLE Exercises ADD COLUMN is_custom INTEGER DEFAULT 0;`
-          );
-          console.log("Added is_custom column");
-        } catch {
-          // Column already exists, ignore error
-        }
-        // 2. Only import if the table is empty
-        await bulkImportExercises(db, exerciseList);
-        console.log("Bulk import done, fetching exercises...");
         await fetchExercises();
-        console.log("Exercises fetched, fetching workouts...");
-        fetchSavedWorkouts();
+        await fetchSavedWorkouts();
       } catch (e) {
-        console.error("Setup failed", e);
+        console.error("Load failed", e);
       } finally {
         setIsLoading(false);
       }
     };
 
-    setupDatabase();
+    loadData();
   }, [db]);
 
   if (isLoading) {
@@ -801,12 +455,10 @@ const MainView = () => {
         }
       });
       setEditingWorkoutId(null);
-      await fetchSavedWorkouts(); // Refetch data to update the 'savedWorkouts' state
-      // 2. RESET THE FORM
-      // We set it back to a fresh array with one empty workout and one empty exercise row
+      await fetchSavedWorkouts();
       setWorkoutPlan([
         {
-          rowId: Date.now(), // Unique ID for the new row
+          rowId: Date.now(),
           name: "",
           exercises: [{ rowId: Date.now() + 1, exerciseId: null }],
         },
@@ -829,12 +481,9 @@ const MainView = () => {
           style: "destructive",
           onPress: async () => {
             try {
-              // Delete the workout. foreign keys handle the rest!
               await db.runAsync("DELETE FROM Workouts WHERE id = ?", [
                 workoutId,
               ]);
-
-              // Refresh the UI
               await fetchSavedWorkouts();
             } catch (error) {
               console.error("Delete failed", error);
@@ -846,11 +495,9 @@ const MainView = () => {
     );
   };
 
-  // upon onChange, the components must call the helper function along with the new value
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* 1. DISPLAY SAVED WORKOUTS FROM DB */}
         <Text>Saved Plans</Text>
         {savedWorkouts.map((workout) => (
           <SavedPlanCard
@@ -862,7 +509,7 @@ const MainView = () => {
         ))}
         {workoutPlan.map((workout) => (
           <View key={workout.rowId}>
-            <Workout
+            <WorkoutCard
               exerciseList={getDropdownData()}
               data={workout}
               nameUpdate={workoutNameUpdate}
@@ -903,7 +550,7 @@ const MainView = () => {
       />
     </SafeAreaView>
   );
-};
+}
 
 const DropdownComponent = ({
   labelField,
@@ -918,7 +565,6 @@ const DropdownComponent = ({
   const [value, setValue] = useState(initialValue ?? null);
 
   const renderItem = (item: any) => {
-    // Handle the special "Add Custom Exercise" action item
     if (item.id === ADD_CUSTOM_EXERCISE_ID) {
       return (
         <View style={styles.addCustomItem}>
@@ -927,20 +573,14 @@ const DropdownComponent = ({
       );
     }
 
-    // Find the index of the current item in the full list (excluding action item)
     const currentIndex = data.findIndex((i: any) => i.id === item.id);
-
-    // Check if the previous item had a different muscle group
-    // For custom exercises, show "CUSTOM" section header
     const isCustom = item.is_custom === 1;
     const prevItem = currentIndex > 0 ? data[currentIndex - 1] : null;
 
     let isNewSection = false;
     if (currentIndex === 1) {
-      // First real item after "Add Custom" action
       isNewSection = true;
     } else if (prevItem && prevItem.id !== ADD_CUSTOM_EXERCISE_ID) {
-      // Check if transitioning between custom and non-custom or between muscle groups
       if (isCustom !== (prevItem.is_custom === 1)) {
         isNewSection = true;
       } else if (!isCustom && prevItem.muscle_group !== item.muscle_group) {
@@ -988,6 +628,7 @@ const DropdownComponent = ({
         placeholderStyle={styles.placeholderStyle}
         selectedTextStyle={styles.selectedTextStyle}
         containerStyle={styles.dropdownListContainer}
+        inputSearchStyle={styles.inputSearchStyle}
         data={data}
         maxHeight={400}
         labelField={labelField}
@@ -995,11 +636,12 @@ const DropdownComponent = ({
         placeholder={placeholder}
         value={value}
         autoScroll={false}
+        search
+        searchPlaceholder="Search exercises..."
         onChange={(item) => {
-          // Handle the special "Add Custom Exercise" action
           if (item.id === ADD_CUSTOM_EXERCISE_ID) {
             onAddCustomExercise();
-            return; // Don't update the value
+            return;
           }
           const val = item[valueField];
           setValue(val);
@@ -1011,7 +653,7 @@ const DropdownComponent = ({
   );
 };
 
-const Workout = ({
+const WorkoutCard = ({
   exerciseList,
   data,
   nameUpdate,
@@ -1087,99 +729,10 @@ const Workout = ({
   );
 };
 
-// Export MainView for use in modal (when already wrapped in SQLiteProvider)
-export { MainView as EditWorkoutView };
-
-export default function EditWorkout() {
-  const userDB = "userDatabase7.db";
-
-  const handleOnInit = async (db: SQLiteDatabase) => {
-    try {
-      console.log("Initializing database...");
-      await db.execAsync(`PRAGMA foreign_keys = ON;`);
-      await db.execAsync(`PRAGMA journal_mode = WAL;`);
-
-      await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS Exercises (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL UNIQUE,
-          muscle_group TEXT,
-          equipment_type TEXT,
-          is_custom INTEGER DEFAULT 0
-        );
-      `);
-      console.log("Exercises table created");
-
-      await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS Workouts (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL
-        );
-      `);
-      console.log("Workouts table created");
-
-      await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS Workout_Exercises (
-          workout_id INTEGER NOT NULL,
-          exercise_id INTEGER NOT NULL,
-          PRIMARY KEY (workout_id, exercise_id),
-          FOREIGN KEY (workout_id) REFERENCES Workouts(id) ON DELETE CASCADE,
-          FOREIGN KEY (exercise_id) REFERENCES Exercises(id) ON DELETE CASCADE
-        );
-      `);
-      console.log("Workout_Exercises table created");
-
-      await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS Records (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          date TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          workout_id INTEGER NOT NULL,
-          exercise_id INTEGER,
-          weight REAL,
-          set_number INTEGER NOT NULL,
-          reps INTEGER,
-          half_reps INTEGER,
-          FOREIGN KEY (workout_id) REFERENCES Workouts(id) ON DELETE CASCADE,
-          FOREIGN KEY (exercise_id) REFERENCES Exercises(id) ON DELETE SET NULL
-        );
-      `);
-      console.log("Records table created");
-
-      // Add is_custom column if it doesn't exist (for existing databases)
-      try {
-        await db.execAsync(
-          `ALTER TABLE Exercises ADD COLUMN is_custom INTEGER DEFAULT 0;`
-        );
-        console.log("Added is_custom column");
-      } catch {
-        // Column already exists, ignore error
-      }
-
-      console.log("Database initialization complete");
-    } catch (error) {
-      console.error("Init failed:", error);
-    }
-  };
-
-  return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <SQLiteProvider
-        databaseName={userDB}
-        onInit={handleOnInit}
-        options={{
-          useNewConnection: false,
-        }}
-      >
-        <MainView />
-      </SQLiteProvider>
-    </SafeAreaView>
-  );
-}
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F2F2F7", // Light grey background
+    backgroundColor: "#F2F2F7",
   },
   scrollContainer: {
     padding: 16,
@@ -1189,12 +742,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
-    // Shadow for iOS
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    // Elevation for Android
     elevation: 3,
   },
   label: {
@@ -1218,9 +769,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
-  dropdownContainer: {
-    flex: 1,
-  },
   dropdown: {
     height: 45,
     borderColor: "#DDD",
@@ -1235,7 +783,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   deleteText: {
-    color: "#FF3B30", // iOS Red
+    color: "#FF3B30",
     fontSize: 20,
     fontWeight: "bold",
   },
@@ -1245,7 +793,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   addExerciseText: {
-    color: "#007AFF", // iOS Blue
+    color: "#007AFF",
     fontWeight: "600",
   },
   deleteWorkoutButton: {
@@ -1326,12 +874,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#3A3A3C",
   },
-  emptyText: {
-    fontStyle: "italic",
-    color: "#8E8E93",
-  },
   sectionHeader: {
-    backgroundColor: "#F2F2F7", // Light grey background for the header
+    backgroundColor: "#F2F2F7",
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderBottomWidth: 1,
@@ -1367,7 +911,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-  // Modal styles
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
@@ -1412,7 +955,6 @@ const styles = StyleSheet.create({
   modalBody: {
     padding: 20,
   },
-  // Custom exercise dropdown styles
   addCustomItem: {
     padding: 15,
     backgroundColor: "#E8F4FD",
@@ -1438,5 +980,22 @@ const styles = StyleSheet.create({
   },
   deleteExerciseIcon: {
     fontSize: 16,
+  },
+  inputSearchStyle: {
+    height: 40,
+    fontSize: 16,
+    borderRadius: 8,
+  },
+  isolationToggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 16,
+    paddingVertical: 8,
+  },
+  isolationHint: {
+    fontSize: 12,
+    color: "#8E8E93",
+    marginTop: 2,
   },
 });

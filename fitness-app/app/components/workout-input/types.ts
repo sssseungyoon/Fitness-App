@@ -3,6 +3,8 @@ export interface SetData {
   weight: number;
   reps: number;
   halfReps: number;
+  leftReps?: number;   // For isolation exercises
+  rightReps?: number;  // For isolation exercises
 }
 
 export interface PreviousSetData {
@@ -10,6 +12,8 @@ export interface PreviousSetData {
   weight: number;
   reps: number;
   halfReps: number;
+  leftReps?: number;   // For isolation exercises
+  rightReps?: number;  // For isolation exercises
   date: string;
 }
 
@@ -19,4 +23,5 @@ export interface ExerciseRecord {
   equipmentType: string;
   sets: SetData[];
   previousSets: PreviousSetData[];
+  isIsolation: boolean;
 }

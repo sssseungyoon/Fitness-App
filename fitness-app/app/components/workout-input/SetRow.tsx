@@ -7,6 +7,7 @@ interface SetRowProps {
   setIndex: number;
   equipmentType: string;
   weightUnit: "kg" | "lbs";
+  isIsolation: boolean;
   onUpdate: (updated: SetData) => void;
   onRemove: () => void;
   canRemove: boolean;
@@ -17,6 +18,7 @@ export const SetRow = ({
   setIndex,
   equipmentType,
   weightUnit,
+  isIsolation,
   onUpdate,
   onRemove,
   canRemove,
@@ -52,14 +54,37 @@ export const SetRow = ({
         onChange={(val) => onUpdate({ ...setData, weight: val })}
       />
 
-      <NumberInput
-        label="Reps"
-        value={setData.reps}
-        step={1}
-        max={100}
-        isInteger={true}
-        onChange={(val) => onUpdate({ ...setData, reps: Math.floor(val) })}
-      />
+      {isIsolation ? (
+        // Isolation exercise: show L/R rep inputs
+        <>
+          <NumberInput
+            label="L Reps"
+            value={setData.leftReps ?? 0}
+            step={1}
+            max={100}
+            isInteger={true}
+            onChange={(val) => onUpdate({ ...setData, leftReps: Math.floor(val) })}
+          />
+          <NumberInput
+            label="R Reps"
+            value={setData.rightReps ?? 0}
+            step={1}
+            max={100}
+            isInteger={true}
+            onChange={(val) => onUpdate({ ...setData, rightReps: Math.floor(val) })}
+          />
+        </>
+      ) : (
+        // Bilateral exercise: show single reps input
+        <NumberInput
+          label="Reps"
+          value={setData.reps}
+          step={1}
+          max={100}
+          isInteger={true}
+          onChange={(val) => onUpdate({ ...setData, reps: Math.floor(val) })}
+        />
+      )}
 
       <NumberInput
         label="Half"

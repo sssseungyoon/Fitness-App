@@ -1,4 +1,4 @@
-import { SQLiteDatabase, SQLiteProvider, useSQLiteContext } from "expo-sqlite";
+import { useSQLiteContext } from "expo-sqlite";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { EditWorkoutView } from "./edit-workout";
+import EditWorkoutView from "./edit-workout";
 
 interface SavedWorkout {
   id: number;
@@ -179,8 +179,7 @@ const UserForm = ({ form, setForm, handleSubmitNewUser }: any) => {
   );
 };
 
-// ProfileView
-const ProfileView = () => {
+export default function Profile() {
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -319,120 +318,88 @@ const ProfileView = () => {
   };
 
   return (
-    <ScrollView
-      className="flex-1 w-full"
-      contentContainerStyle={{ alignItems: "center", paddingBottom: 40 }}
-    >
-      {existingUser ? (
-        <>
-          <UserDetails
-            isEditing={isEditing}
-            setIsEditing={setIsEditing}
-            existingUser={existingUser}
-            handleOnSaveChanges={handleOnSaveChanges}
-            handleOnCancelChanges={handleOnCancelChanges}
-            form={form}
-            setForm={setForm}
-          />
+    <SafeAreaView className="flex-1 items-center bg-gray-100">
+      <ScrollView
+        className="flex-1 w-full"
+        contentContainerStyle={{ alignItems: "center", paddingBottom: 40 }}
+      >
+        {existingUser ? (
+          <>
+            <UserDetails
+              isEditing={isEditing}
+              setIsEditing={setIsEditing}
+              existingUser={existingUser}
+              handleOnSaveChanges={handleOnSaveChanges}
+              handleOnCancelChanges={handleOnCancelChanges}
+              form={form}
+              setForm={setForm}
+            />
 
-          {/* Workout Plans Section */}
-          <View className="w-4/5 mt-4">
-            <View className="flex-row justify-between items-center mb-3">
-              <Text className="text-lg font-bold text-gray-800">
-                Workout Plans
-              </Text>
-              <TouchableOpacity
-                onPress={() => setShowEditModal(true)}
-                className="bg-blue-500 px-4 py-2 rounded-lg"
-              >
-                <Text className="text-white font-semibold">Edit Plans</Text>
-              </TouchableOpacity>
-            </View>
-
-            {savedWorkouts.length === 0 ? (
-              <View className="bg-white rounded-xl p-6 items-center">
-                <Text className="text-gray-500 text-center mb-4">
-                  No workout plans yet
+            {/* Workout Plans Section */}
+            <View className="w-4/5 mt-4">
+              <View className="flex-row justify-between items-center mb-3">
+                <Text className="text-lg font-bold text-gray-800">
+                  Workout Plans
                 </Text>
                 <TouchableOpacity
                   onPress={() => setShowEditModal(true)}
-                  className="bg-blue-500 px-6 py-3 rounded-lg"
+                  className="bg-blue-500 px-4 py-2 rounded-lg"
                 >
-                  <Text className="text-white font-semibold">
-                    Create Your First Plan
+                  <Text className="text-white font-semibold">Edit Plans</Text>
+                </TouchableOpacity>
+              </View>
+
+              {savedWorkouts.length === 0 ? (
+                <View className="bg-white rounded-xl p-6 items-center">
+                  <Text className="text-gray-500 text-center mb-4">
+                    No workout plans yet
                   </Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              savedWorkouts.map((workout) => (
-                <SavedPlanCard key={workout.id} workout={workout} />
-              ))
-            )}
-          </View>
+                  <TouchableOpacity
+                    onPress={() => setShowEditModal(true)}
+                    className="bg-blue-500 px-6 py-3 rounded-lg"
+                  >
+                    <Text className="text-white font-semibold">
+                      Create Your First Plan
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                savedWorkouts.map((workout) => (
+                  <SavedPlanCard key={workout.id} workout={workout} />
+                ))
+              )}
+            </View>
 
-          {/* Edit Workout Modal */}
-          <Modal
-            visible={showEditModal}
-            animationType="slide"
-            presentationStyle="pageSheet"
-            onRequestClose={handleCloseModal}
-          >
-            <SafeAreaView className="flex-1">
-              <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-200">
-                <TouchableOpacity onPress={handleCloseModal}>
-                  <Text className="text-blue-500 text-lg">Done</Text>
-                </TouchableOpacity>
-                <Text className="text-lg font-bold">Edit Workout Plans</Text>
-                <View className="w-12" />
-              </View>
-              <EditWorkoutView />
-            </SafeAreaView>
-          </Modal>
-        </>
-      ) : (
-        <UserForm
-          form={form}
-          setForm={setForm}
-          handleSubmitNewUser={handleSubmitNewUser}
-        />
-      )}
-    </ScrollView>
-  );
-};
-
-const Profile = () => {
-  const userDB = "userDatabase7.db";
-
-  const handleOnInit = async (db: SQLiteDatabase) => {
-    try {
-      await db.execAsync(`
-        PRAGMA journal_mode = WAL;
-        CREATE TABLE IF NOT EXISTS users (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          firstName TEXT NOT NULL,
-          lastName TEXT NOT NULL,
-          weight_unit TEXT DEFAULT 'kg'
-        );
-      `);
-    } catch (Error: any) {
-      console.log(Error);
-    }
-  };
-
-  return (
-    <SafeAreaView className="flex-1 items-center bg-gray-100">
-      <SQLiteProvider
-        databaseName={userDB}
-        onInit={handleOnInit}
-        options={{
-          useNewConnection: false,
-        }}
-      >
-        <ProfileView />
-      </SQLiteProvider>
+            {/* Edit Workout Modal */}
+            <Modal
+              visible={showEditModal}
+              animationType="slide"
+              presentationStyle="pageSheet"
+              onRequestClose={handleCloseModal}
+            >
+              <SafeAreaView className="flex-1">
+                <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-200">
+                  <TouchableOpacity onPress={handleCloseModal}>
+                    <Text className="text-blue-500 text-lg">Done</Text>
+                  </TouchableOpacity>
+                  <Text className="text-lg font-bold">Edit Workout Plans</Text>
+                  <View className="w-12" />
+                </View>
+                <EditWorkoutView />
+              </SafeAreaView>
+            </Modal>
+          </>
+        ) : (
+          <UserForm
+            form={form}
+            setForm={setForm}
+            handleSubmitNewUser={handleSubmitNewUser}
+          />
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   tableContainer: {
@@ -506,5 +473,3 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 });
-
-export default Profile;

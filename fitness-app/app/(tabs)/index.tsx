@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
-import { SQLiteDatabase, SQLiteProvider, useSQLiteContext } from "expo-sqlite";
+import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -24,7 +24,12 @@ const DRAFT_STORAGE_KEY = "workout_draft";
 interface SavedWorkout {
   id: number;
   name: string;
-  exercises: { id: number; name: string; equipment_type: string }[];
+  exercises: {
+    id: number;
+    name: string;
+    equipment_type: string;
+    is_isolation: boolean;
+  }[];
 }
 
 interface WorkoutSession {
@@ -33,7 +38,7 @@ interface WorkoutSession {
   workoutName: string;
 }
 
-const MainView = () => {
+export default function Index() {
   const db = useSQLiteContext();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
@@ -126,13 +131,15 @@ const MainView = () => {
         exerciseId: number;
         exerciseName: string;
         equipmentType: string;
+        isIsolation: number;
       }>(`
         SELECT
           w.id AS workoutId,
           w.name AS workoutName,
           e.id AS exerciseId,
           e.name AS exerciseName,
-          e.equipment_type AS equipmentType
+          e.equipment_type AS equipmentType,
+          COALESCE(e.is_isolation, 0) AS isIsolation
         FROM Workouts w
         LEFT JOIN Workout_Exercises we ON w.id = we.workout_id
         LEFT JOIN Exercises e ON we.exercise_id = e.id
@@ -154,6 +161,7 @@ const MainView = () => {
             id: row.exerciseId,
             name: row.exerciseName,
             equipment_type: row.equipmentType,
+            is_isolation: row.isIsolation === 1,
           });
         }
       });
@@ -211,9 +219,11 @@ const MainView = () => {
             weight: number;
             reps: number;
             half_reps: number;
+            left_reps: number | null;
+            right_reps: number | null;
             date: string;
           }>(
-            `SELECT set_number, weight, reps, half_reps, date
+            `SELECT set_number, weight, reps, half_reps, left_reps, right_reps, date
              FROM Records
              WHERE exercise_id = ? AND date = ?
              ORDER BY set_number ASC`,
@@ -225,23 +235,29 @@ const MainView = () => {
             weight: r.weight || 0,
             reps: r.reps || 0,
             halfReps: r.half_reps || 0,
+            leftReps: r.left_reps ?? undefined,
+            rightReps: r.right_reps ?? undefined,
             date: r.date,
           }));
         }
 
         // Pre-fill current set with the first previous set's values
         const firstPrevSet = previousSets[0];
+        const isIsolation = ex.is_isolation;
 
         return {
           exerciseId: ex.id,
           exerciseName: ex.name,
           equipmentType: ex.equipment_type,
+          isIsolation,
           sets: [
             {
               setNumber: 1,
               weight: firstPrevSet?.weight || 0,
               reps: firstPrevSet?.reps || 0,
               halfReps: firstPrevSet?.halfReps || 0,
+              leftReps: isIsolation ? firstPrevSet?.leftReps || 0 : undefined,
+              rightReps: isIsolation ? firstPrevSet?.rightReps || 0 : undefined,
             },
           ],
           previousSets,
@@ -294,26 +310,6 @@ const MainView = () => {
     );
   };
 
-  // Discard current draft and start fresh
-  const handleDiscardDraft = () => {
-    Alert.alert(
-      "Discard Draft",
-      "Are you sure you want to discard your current workout progress?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Discard",
-          style: "destructive",
-          onPress: async () => {
-            await clearDraft();
-            setSelectedWorkout(null);
-            setExerciseRecords([]);
-          },
-        },
-      ]
-    );
-  };
-
   // Save all records
   const handleSave = async () => {
     if (!selectedWorkout) {
@@ -333,8 +329,8 @@ const MainView = () => {
         for (const exercise of exerciseRecords) {
           for (const set of exercise.sets) {
             await db.runAsync(
-              `INSERT INTO Records (date, workout_id, exercise_id, weight, set_number, reps, half_reps)
-               VALUES (?, ?, ?, ?, ?, ?, ?)`,
+              `INSERT INTO Records (date, workout_id, exercise_id, weight, set_number, reps, half_reps, left_reps, right_reps)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
               [
                 date,
                 selectedWorkout.id,
@@ -343,6 +339,8 @@ const MainView = () => {
                 set.setNumber,
                 set.reps,
                 set.halfReps,
+                set.leftReps ?? null,
+                set.rightReps ?? null,
               ]
             );
           }
@@ -413,7 +411,7 @@ const MainView = () => {
                   <Text className="text-xl font-bold text-gray-800 mb-4">
                     Recent Workouts
                   </Text>
-                  {recentSessions.map((session, index) => (
+                  {recentSessions.map((session) => (
                     <TouchableOpacity
                       key={`${session.date}-${session.workoutId}`}
                       onPress={() =>
@@ -493,77 +491,6 @@ const MainView = () => {
           </View>
         </>
       )}
-    </SafeAreaView>
-  );
-};
-
-export default function Index() {
-  const userDB = "userDatabase7.db";
-
-  const handleOnInit = async (db: SQLiteDatabase) => {
-    try {
-      await db.execAsync(`PRAGMA foreign_keys = ON;`);
-
-      await db.execAsync(`
-        PRAGMA journal_mode = WAL;
-
-        CREATE TABLE IF NOT EXISTS Exercises (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL UNIQUE,
-          muscle_group TEXT,
-          equipment_type TEXT
-          is_custom INTEGER DEFAULT 0
-        );
-
-        CREATE TABLE IF NOT EXISTS Workouts (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS Workout_Exercises (
-          workout_id INTEGER NOT NULL,
-          exercise_id INTEGER NOT NULL,
-          PRIMARY KEY (workout_id, exercise_id),
-          FOREIGN KEY (workout_id) REFERENCES Workouts(id) ON DELETE CASCADE,
-          FOREIGN KEY (exercise_id) REFERENCES Exercises(id) ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS Records (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          date TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          workout_id INTEGER NOT NULL,
-          exercise_id INTEGER,
-          weight REAL,
-          set_number INTEGER NOT NULL,
-          reps INTEGER,
-          half_reps INTEGER,
-          FOREIGN KEY (workout_id) REFERENCES Workouts(id) ON DELETE CASCADE,
-          FOREIGN KEY (exercise_id) REFERENCES Exercises(id) ON DELETE SET NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS users (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          firstName TEXT NOT NULL,
-          lastName TEXT NOT NULL,
-          weight_unit TEXT DEFAULT 'kg'
-        );
-      `);
-    } catch (error) {
-      console.error("Init failed:", error);
-    }
-  };
-
-  return (
-    <SafeAreaView className="flex-1">
-      <SQLiteProvider
-        databaseName={userDB}
-        onInit={handleOnInit}
-        options={{
-          useNewConnection: false,
-        }}
-      >
-        <MainView />
-      </SQLiteProvider>
     </SafeAreaView>
   );
 }
