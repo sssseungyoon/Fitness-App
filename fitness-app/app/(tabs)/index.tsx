@@ -132,6 +132,7 @@ export default function Index() {
         exerciseName: string;
         equipmentType: string;
         isIsolation: number;
+        exerciseOrder: number;
       }>(`
         SELECT
           w.id AS workoutId,
@@ -139,11 +140,12 @@ export default function Index() {
           e.id AS exerciseId,
           e.name AS exerciseName,
           e.equipment_type AS equipmentType,
-          COALESCE(e.is_isolation, 0) AS isIsolation
+          COALESCE(e.is_isolation, 0) AS isIsolation,
+          we.exercise_order AS exerciseOrder
         FROM Workouts w
         LEFT JOIN Workout_Exercises we ON w.id = we.workout_id
         LEFT JOIN Exercises e ON we.exercise_id = e.id
-        ORDER BY w.id DESC
+        ORDER BY w.id DESC, we.exercise_order ASC
       `);
 
       // Group by workout
@@ -353,6 +355,9 @@ export default function Index() {
       Alert.alert("Success", "Workout recorded!");
       setSelectedWorkout(null);
       setExerciseRecords([]);
+
+      // Refresh the workouts and recent sessions list
+      await fetchWorkouts();
     } catch (error: any) {
       console.error("Failed to save:", error);
       Alert.alert(

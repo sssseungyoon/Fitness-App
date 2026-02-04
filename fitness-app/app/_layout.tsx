@@ -182,6 +182,7 @@ const initializeDatabase = async (db: SQLiteDatabase) => {
       CREATE TABLE IF NOT EXISTS Workout_Exercises (
         workout_id INTEGER NOT NULL,
         exercise_id INTEGER NOT NULL,
+        exercise_order INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (workout_id, exercise_id),
         FOREIGN KEY (workout_id) REFERENCES Workouts(id) ON DELETE CASCADE,
         FOREIGN KEY (exercise_id) REFERENCES Exercises(id) ON DELETE CASCADE
@@ -222,6 +223,7 @@ const initializeDatabase = async (db: SQLiteDatabase) => {
       "ALTER TABLE Exercises ADD COLUMN is_isolation INTEGER DEFAULT 0",
       "ALTER TABLE Records ADD COLUMN left_reps INTEGER",
       "ALTER TABLE Records ADD COLUMN right_reps INTEGER",
+      "ALTER TABLE Workout_Exercises ADD COLUMN exercise_order INTEGER NOT NULL DEFAULT 0",
     ];
 
     for (const migration of migrations) {

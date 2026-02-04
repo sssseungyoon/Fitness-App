@@ -13,6 +13,11 @@ import {
   View,
 } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
+import DraggableFlatList, {
+  RenderItemParams,
+  ScaleDecorator,
+} from "react-native-draggable-flatlist";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // Constants for custom exercise feature
@@ -215,11 +220,12 @@ export default function EditWorkout() {
         w.id AS workoutId,
         w.name AS workoutName,
         e.name AS exerciseName,
-        e.id AS exerciseId
+        e.id AS exerciseId,
+        we.exercise_order AS exerciseOrder
       FROM Workouts w
       LEFT JOIN Workout_Exercises we ON w.id = we.workout_id
       LEFT JOIN Exercises e ON we.exercise_id = e.id
-      ORDER BY w.id DESC
+      ORDER BY w.id DESC, we.exercise_order ASC
     `);
 
       interface GroupedWorkout {
@@ -431,24 +437,38 @@ export default function EditWorkout() {
   const handleOnSave = async () => {
     try {
       await db.withTransactionAsync(async () => {
-        // If editing, delete the old workout first
-        if (editingWorkoutId) {
-          await db.runAsync("DELETE FROM Workouts WHERE id = ?", [
-            editingWorkoutId,
-          ]);
-        }
-
         for (const workout of workoutPlan) {
-          const result = await db.runAsync(
-            `INSERT INTO Workouts (name) VALUES (?)`,
-            [workout.name || "New Workout"]
-          );
-          const workoutId = result.lastInsertRowId;
-          for (const exercise of workout.exercises) {
+          let workoutId: number;
+
+          if (editingWorkoutId) {
+            // Update existing workout name instead of deleting
+            await db.runAsync(
+              `UPDATE Workouts SET name = ? WHERE id = ?`,
+              [workout.name || "New Workout", editingWorkoutId]
+            );
+            workoutId = editingWorkoutId;
+
+            // Clear only the exercise associations (not the workout itself)
+            await db.runAsync(
+              "DELETE FROM Workout_Exercises WHERE workout_id = ?",
+              [editingWorkoutId]
+            );
+          } else {
+            // Create new workout
+            const result = await db.runAsync(
+              `INSERT INTO Workouts (name) VALUES (?)`,
+              [workout.name || "New Workout"]
+            );
+            workoutId = result.lastInsertRowId;
+          }
+
+          // Insert exercises with order
+          for (let i = 0; i < workout.exercises.length; i++) {
+            const exercise = workout.exercises[i];
             if (exercise.exerciseId) {
               await db.runAsync(
-                "INSERT INTO Workout_Exercises (workout_id, exercise_id) VALUES (?,?)",
-                [workoutId, exercise.exerciseId]
+                "INSERT INTO Workout_Exercises (workout_id, exercise_id, exercise_order) VALUES (?, ?, ?)",
+                [workoutId, exercise.exerciseId, i]
               );
             }
           }
@@ -496,59 +516,61 @@ export default function EditWorkout() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <Text>Saved Plans</Text>
-        {savedWorkouts.map((workout) => (
-          <SavedPlanCard
-            key={workout.id}
-            workout={workout}
-            onDelete={deleteSavedWorkout}
-            onEdit={handleEditWorkout}
-          />
-        ))}
-        {workoutPlan.map((workout) => (
-          <View key={workout.rowId}>
-            <WorkoutCard
-              exerciseList={getDropdownData()}
-              data={workout}
-              nameUpdate={workoutNameUpdate}
-              exerciseUpdate={workoutExerciseUpdate}
-              onAddCustomExercise={() => setShowAddExerciseModal(true)}
-              onDeleteCustomExercise={deleteCustomExercise}
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
+          <Text>Saved Plans</Text>
+          {savedWorkouts.map((workout) => (
+            <SavedPlanCard
+              key={workout.id}
+              workout={workout}
+              onDelete={deleteSavedWorkout}
+              onEdit={handleEditWorkout}
             />
-            <TouchableOpacity
-              style={styles.deleteWorkoutButton}
-              onPress={() => removeWorkoutRow(workout.rowId)}
-            >
-              <Text style={styles.deleteWorkoutText}>Remove This Workout</Text>
-            </TouchableOpacity>
-          </View>
-        ))}
-      </ScrollView>
+          ))}
+          {workoutPlan.map((workout) => (
+            <View key={workout.rowId}>
+              <WorkoutCard
+                exerciseList={getDropdownData()}
+                data={workout}
+                nameUpdate={workoutNameUpdate}
+                exerciseUpdate={workoutExerciseUpdate}
+                onAddCustomExercise={() => setShowAddExerciseModal(true)}
+                onDeleteCustomExercise={deleteCustomExercise}
+              />
+              <TouchableOpacity
+                style={styles.deleteWorkoutButton}
+                onPress={() => removeWorkoutRow(workout.rowId)}
+              >
+                <Text style={styles.deleteWorkoutText}>Remove This Workout</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </ScrollView>
 
-      <View style={styles.footerActions}>
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={addWorkoutRow}
-        >
-          <Text style={styles.secondaryButtonText}>+ Add Another Workout</Text>
-        </TouchableOpacity>
+        <View style={styles.footerActions}>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={addWorkoutRow}
+          >
+            <Text style={styles.secondaryButtonText}>+ Add Another Workout</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.primaryButton, { marginTop: 12 }]}
-          onPress={handleOnSave}
-        >
-          <Text style={styles.buttonText}>Save Complete Plan</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            style={[styles.primaryButton, { marginTop: 12 }]}
+            onPress={handleOnSave}
+          >
+            <Text style={styles.buttonText}>Save Complete Plan</Text>
+          </TouchableOpacity>
+        </View>
 
-      <AddExerciseModal
-        visible={showAddExerciseModal}
-        onClose={() => setShowAddExerciseModal(false)}
-        onSave={saveCustomExercise}
-      />
-    </SafeAreaView>
+        <AddExerciseModal
+          visible={showAddExerciseModal}
+          onClose={() => setShowAddExerciseModal(false)}
+          onSave={saveCustomExercise}
+        />
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }
 
@@ -653,6 +675,11 @@ const DropdownComponent = ({
   );
 };
 
+interface ExerciseRowData {
+  rowId: number;
+  exerciseId: number | null;
+}
+
 const WorkoutCard = ({
   exerciseList,
   data,
@@ -685,6 +712,53 @@ const WorkoutCard = ({
     }
   };
 
+  const handleDragEnd = ({ data: reorderedData }: { data: ExerciseRowData[] }) => {
+    exerciseUpdate(data.rowId, reorderedData);
+  };
+
+  const renderExerciseRow = ({
+    item,
+    drag,
+    isActive,
+  }: RenderItemParams<ExerciseRowData>) => (
+    <ScaleDecorator>
+      <View
+        style={[
+          styles.exerciseRow,
+          isActive && styles.exerciseRowDragging,
+        ]}
+      >
+        <TouchableOpacity
+          onLongPress={drag}
+          delayLongPress={100}
+          style={styles.dragHandle}
+        >
+          <Text style={styles.dragHandleText}>≡</Text>
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <DropdownComponent
+            labelField="name"
+            valueField="id"
+            placeholder="Select Exercise"
+            data={exerciseList}
+            onValueChange={(id: number) =>
+              handleSelectExercise(item.rowId, id)
+            }
+            initialValue={item.exerciseId}
+            onAddCustomExercise={onAddCustomExercise}
+            onDeleteCustomExercise={onDeleteCustomExercise}
+          />
+        </View>
+        <TouchableOpacity
+          style={styles.inlineDeleteButton}
+          onPress={() => removeRow(item.rowId)}
+        >
+          <Text style={styles.deleteText}>✕</Text>
+        </TouchableOpacity>
+      </View>
+    </ScaleDecorator>
+  );
+
   return (
     <View style={styles.workoutCard}>
       <Text style={styles.label}>Workout Name</Text>
@@ -697,30 +771,14 @@ const WorkoutCard = ({
       />
 
       <Text style={[styles.label, { marginTop: 10 }]}>Exercises</Text>
-      {data.exercises.map((row: any) => (
-        <View key={row.rowId} style={styles.exerciseRow}>
-          <View style={{ flex: 1 }}>
-            <DropdownComponent
-              labelField="name"
-              valueField="id"
-              placeholder="Select Exercise"
-              data={exerciseList}
-              onValueChange={(id: number) =>
-                handleSelectExercise(row.rowId, id)
-              }
-              initialValue={row.exerciseId}
-              onAddCustomExercise={onAddCustomExercise}
-              onDeleteCustomExercise={onDeleteCustomExercise}
-            />
-          </View>
-          <TouchableOpacity
-            style={styles.inlineDeleteButton}
-            onPress={() => removeRow(row.rowId)}
-          >
-            <Text style={styles.deleteText}>✕</Text>
-          </TouchableOpacity>
-        </View>
-      ))}
+      <Text style={styles.dragHint}>Hold and drag ≡ to reorder</Text>
+      <DraggableFlatList
+        data={data.exercises}
+        keyExtractor={(item: ExerciseRowData) => item.rowId.toString()}
+        onDragEnd={handleDragEnd}
+        renderItem={renderExerciseRow}
+        scrollEnabled={false}
+      />
 
       <TouchableOpacity style={styles.addExerciseButton} onPress={addRow}>
         <Text style={styles.addExerciseText}>+ Add Exercise</Text>
@@ -768,6 +826,33 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 8,
+    backgroundColor: "#FFF",
+  },
+  exerciseRowDragging: {
+    backgroundColor: "#E8F4FD",
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  dragHandle: {
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  dragHandleText: {
+    fontSize: 20,
+    color: "#999",
+    fontWeight: "bold",
+  },
+  dragHint: {
+    fontSize: 12,
+    color: "#8E8E93",
+    marginBottom: 8,
+    fontStyle: "italic",
   },
   dropdown: {
     height: 45,
