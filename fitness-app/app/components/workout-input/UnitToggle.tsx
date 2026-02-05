@@ -6,34 +6,42 @@ interface UnitToggleProps {
 }
 
 export const UnitToggle = ({ unit, onToggle }: UnitToggleProps) => (
-  <View className="flex-row items-center justify-center mb-4">
-    <Text className="text-gray-600 mr-3">Weight Unit:</Text>
+  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+    <Text style={{ color: "#6E6E73", marginRight: 12 }}>Weight Unit:</Text>
     <TouchableOpacity
       onPress={onToggle}
-      className="flex-row bg-gray-200 rounded-full p-1"
+      style={{ flexDirection: "row", backgroundColor: "#1C1C1E", borderRadius: 20, padding: 4, borderWidth: 1, borderColor: "#2C2C2E" }}
     >
       <View
-        className={`px-4 py-2 rounded-full ${
-          unit === "kg" ? "bg-blue-500" : "bg-transparent"
-        }`}
+        style={{
+          paddingHorizontal: 16,
+          paddingVertical: 8,
+          borderRadius: 16,
+          backgroundColor: unit === "kg" ? "#F5F5F5" : "transparent",
+        }}
       >
         <Text
-          className={`font-semibold ${
-            unit === "kg" ? "text-white" : "text-gray-600"
-          }`}
+          style={{
+            fontWeight: "600",
+            color: unit === "kg" ? "#000" : "#6E6E73",
+          }}
         >
           kg
         </Text>
       </View>
       <View
-        className={`px-4 py-2 rounded-full ${
-          unit === "lbs" ? "bg-blue-500" : "bg-transparent"
-        }`}
+        style={{
+          paddingHorizontal: 16,
+          paddingVertical: 8,
+          borderRadius: 16,
+          backgroundColor: unit === "lbs" ? "#F5F5F5" : "transparent",
+        }}
       >
         <Text
-          className={`font-semibold ${
-            unit === "lbs" ? "text-white" : "text-gray-600"
-          }`}
+          style={{
+            fontWeight: "600",
+            color: unit === "lbs" ? "#000" : "#6E6E73",
+          }}
         >
           lbs
         </Text>

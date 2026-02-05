@@ -181,8 +181,8 @@ export default function Calendar() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 justify-center items-center">
-        <ActivityIndicator size="large" color="#007AFF" />
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#000" }}>
+        <ActivityIndicator size="large" color="#A0A0A0" />
       </View>
     );
   }
@@ -190,22 +190,22 @@ export default function Calendar() {
   const monthKeys = Object.keys(sessionsByMonth).sort().reverse();
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-100" edges={["bottom"]}>
-      <ScrollView className="flex-1 p-4">
-        <Text className="text-2xl font-bold text-gray-800 mb-6 text-center">
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }} edges={["bottom"]}>
+      <ScrollView style={{ flex: 1, padding: 16 }}>
+        <Text style={{ fontSize: 24, fontWeight: "700", color: "#F5F5F5", marginBottom: 24, textAlign: "center" }}>
           History
         </Text>
 
         {monthKeys.length === 0 ? (
-          <View className="flex-1 justify-center items-center py-20">
-            <Text className="text-gray-500 text-center">
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center", paddingVertical: 80 }}>
+            <Text style={{ color: "#6E6E73", textAlign: "center" }}>
               No workout history yet.{"\n"}Complete a workout to see it here.
             </Text>
           </View>
         ) : (
           monthKeys.map((monthKey) => (
-            <View key={monthKey} className="mb-6">
-              <Text className="text-lg font-semibold text-gray-700 mb-3">
+            <View key={monthKey} style={{ marginBottom: 24 }}>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: "#6E6E73", marginBottom: 12, letterSpacing: 0.5, textTransform: "uppercase" }}>
                 {sessionsByMonth[monthKey].label}
               </Text>
 
@@ -213,25 +213,27 @@ export default function Calendar() {
                 <TouchableOpacity
                   key={`${session.date}-${session.workoutId}`}
                   onPress={() => handleSessionSelect(session)}
-                  className="bg-white rounded-xl p-4 mb-2 flex-row items-center"
                   style={{
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.05,
-                    shadowRadius: 2,
-                    elevation: 1,
+                    backgroundColor: "#1C1C1E",
+                    borderRadius: 12,
+                    padding: 16,
+                    marginBottom: 8,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor: "#2C2C2E",
                   }}
                 >
-                  <View className="bg-blue-100 rounded-lg w-12 h-12 items-center justify-center mr-4">
-                    <Text className="text-blue-600 font-bold text-lg">
+                  <View style={{ backgroundColor: "#2C2C2E", borderRadius: 10, width: 48, height: 48, alignItems: "center", justifyContent: "center", marginRight: 16 }}>
+                    <Text style={{ color: "#F5F5F5", fontWeight: "700", fontSize: 18 }}>
                       {formatDayNumber(session.date)}
                     </Text>
                   </View>
-                  <View className="flex-1">
-                    <Text className="text-base font-semibold text-gray-800">
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 16, fontWeight: "600", color: "#F5F5F5" }}>
                       {session.workoutName}
                     </Text>
-                    <Text className="text-sm text-gray-500">
+                    <Text style={{ fontSize: 13, color: "#6E6E73", marginTop: 2 }}>
                       {formatSessionDate(session.date)}
                     </Text>
                   </View>
@@ -249,56 +251,56 @@ export default function Calendar() {
         presentationStyle="pageSheet"
         onRequestClose={closeModal}
       >
-        <SafeAreaView className="flex-1 bg-gray-100">
-          <View className="flex-row items-center justify-between p-4 border-b border-gray-200 bg-white">
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16, borderBottomWidth: 0.5, borderBottomColor: "#2C2C2E", backgroundColor: "#0A0A0A" }}>
             <TouchableOpacity onPress={closeModal}>
-              <Text className="text-blue-500 text-lg">Close</Text>
+              <Text style={{ color: "#A0A0A0", fontSize: 17 }}>Close</Text>
             </TouchableOpacity>
-            <View className="flex-1 mx-4">
+            <View style={{ flex: 1, marginHorizontal: 16 }}>
               <Text
-                className="text-lg font-bold text-gray-800 text-center"
+                style={{ fontSize: 17, fontWeight: "600", color: "#F5F5F5", textAlign: "center" }}
                 numberOfLines={1}
               >
                 {selectedSession?.workoutName}
               </Text>
-              <Text className="text-sm text-gray-500 text-center">
+              <Text style={{ fontSize: 13, color: "#6E6E73", textAlign: "center", marginTop: 2 }}>
                 {selectedSession && formatSessionDate(selectedSession.date)}
               </Text>
             </View>
-            <View className="w-12" />
+            <View style={{ width: 48 }} />
           </View>
 
-          <ScrollView className="flex-1 p-4">
+          <ScrollView style={{ flex: 1, padding: 16 }}>
             {isLoadingDetails ? (
-              <View className="py-20 items-center">
-                <ActivityIndicator size="large" color="#007AFF" />
+              <View style={{ paddingVertical: 80, alignItems: "center" }}>
+                <ActivityIndicator size="large" color="#A0A0A0" />
               </View>
             ) : (
               sessionDetails.map((exercise, index) => (
                 <View
                   key={index}
-                  className="bg-white rounded-xl p-4 mb-4 shadow-sm"
+                  style={{ backgroundColor: "#1C1C1E", borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: "#2C2C2E" }}
                 >
-                  <Text className="text-lg font-bold text-gray-800 mb-1">
+                  <Text style={{ fontSize: 17, fontWeight: "600", color: "#F5F5F5", marginBottom: 4 }}>
                     {exercise.exerciseName}
                   </Text>
-                  <Text className="text-xs text-gray-500 mb-3 capitalize">
+                  <Text style={{ fontSize: 12, color: "#6E6E73", marginBottom: 12, textTransform: "capitalize" }}>
                     {exercise.equipmentType}
                   </Text>
 
                   {exercise.sets.map((set, setIndex) => (
                     <View
                       key={setIndex}
-                      className="flex-row items-center py-2 border-b border-gray-100"
+                      style={{ flexDirection: "row", alignItems: "center", paddingVertical: 10, borderBottomWidth: setIndex < exercise.sets.length - 1 ? 0.5 : 0, borderBottomColor: "#2C2C2E" }}
                     >
-                      <Text className="text-gray-600 w-16">
+                      <Text style={{ color: "#6E6E73", width: 64 }}>
                         Set {set.setNumber}
                       </Text>
-                      <Text className="text-gray-800 font-semibold flex-1">
+                      <Text style={{ color: "#F5F5F5", fontWeight: "600", flex: 1 }}>
                         {set.weight}
                         {weightUnit} × {set.reps}
                         {set.halfReps > 0 ? (
-                          <Text className="text-amber-600">
+                          <Text style={{ color: "#A0A0A0" }}>
                             {" "}
                             + {set.halfReps}½
                           </Text>

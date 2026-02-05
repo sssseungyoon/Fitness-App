@@ -56,28 +56,28 @@ export const ExerciseCard = ({
   };
 
   return (
-    <View className="bg-white rounded-xl p-4 mb-4 shadow-sm">
-      <Text className="text-lg font-bold text-gray-800 mb-1">
+    <View style={{ backgroundColor: "#1C1C1E", borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: "#2C2C2E" }}>
+      <Text style={{ fontSize: 17, fontWeight: "600", color: "#F5F5F5", marginBottom: 4 }}>
         {exercise.exerciseName}
       </Text>
-      <Text className="text-xs text-gray-500 mb-3 capitalize">
+      <Text style={{ fontSize: 12, color: "#6E6E73", marginBottom: 12, textTransform: "capitalize" }}>
         {exercise.equipmentType}
         {exercise.isIsolation && " • Isolation"}
       </Text>
 
       {/* Previous Records Section */}
       {exercise.previousSets.length > 0 && (
-        <View className="bg-amber-50 rounded-lg p-3 mb-3 border border-amber-200">
-          <Text className="text-sm font-semibold text-amber-800 mb-2">
+        <View style={{ backgroundColor: "#0A0A0A", borderRadius: 10, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: "#2C2C2E" }}>
+          <Text style={{ fontSize: 12, fontWeight: "600", color: "#6E6E73", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>
             Previous ({formatDate(exercise.previousSets[0].date)})
           </Text>
-          <View className="flex-row flex-wrap">
+          <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
             {exercise.previousSets.map((prevSet, idx) => (
               <View
                 key={idx}
-                className="bg-white rounded px-2 py-1 mr-2 mb-1 border border-amber-300"
+                style={{ backgroundColor: "#1C1C1E", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4, marginRight: 8, marginBottom: 6, borderWidth: 1, borderColor: "#3A3A3C" }}
               >
-                <Text className="text-xs text-gray-600">
+                <Text style={{ fontSize: 11, color: "#A0A0A0" }}>
                   Set {prevSet.setNumber}: {prevSet.weight}
                   {weightUnit} × {formatReps(prevSet)}
                   {prevSet.halfReps > 0 ? ` + ${prevSet.halfReps}½` : ""}
@@ -105,9 +105,9 @@ export const ExerciseCard = ({
 
       <TouchableOpacity
         onPress={addSet}
-        className="py-2 items-center border-t border-gray-200 mt-2"
+        style={{ paddingVertical: 12, alignItems: "center", borderTopWidth: 0.5, borderTopColor: "#3A3A3C", marginTop: 8 }}
       >
-        <Text className="text-blue-500 font-semibold">+ Add Set</Text>
+        <Text style={{ color: "#A0A0A0", fontWeight: "600" }}>+ Add Set</Text>
       </TouchableOpacity>
     </View>
   );

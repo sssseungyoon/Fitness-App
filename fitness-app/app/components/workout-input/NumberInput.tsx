@@ -73,14 +73,14 @@ export const NumberInput = ({
   };
 
   return (
-    <View className="flex-row items-center justify-between py-2">
-      <Text className="text-gray-600 text-sm w-16">{label}</Text>
-      <View className="flex-row items-center">
+    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 8 }}>
+      <Text style={{ color: "#8E8E93", fontSize: 13, width: 64 }}>{label}</Text>
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
         <TouchableOpacity
           onPress={decrement}
-          className="w-12 h-12 bg-gray-200 rounded-l-lg items-center justify-center"
+          style={{ width: 44, height: 44, backgroundColor: "#2C2C2E", borderTopLeftRadius: 8, borderBottomLeftRadius: 8, alignItems: "center", justifyContent: "center" }}
         >
-          <Text className="text-2xl font-bold text-gray-700">−</Text>
+          <Text style={{ fontSize: 22, fontWeight: "600", color: "#A0A0A0" }}>−</Text>
         </TouchableOpacity>
         <TextInput
           value={textValue}
@@ -90,24 +90,25 @@ export const NumberInput = ({
           selectTextOnFocus
           style={{
             width: 70,
-            height: 48,
-            backgroundColor: "white",
+            height: 44,
+            backgroundColor: "#1C1C1E",
             borderTopWidth: 1,
             borderBottomWidth: 1,
-            borderColor: "#E5E5E5",
+            borderColor: "#3A3A3C",
             textAlign: "center",
             fontSize: 18,
             fontWeight: "600",
+            color: "#F5F5F5",
             paddingVertical: 0,
           }}
         />
         <TouchableOpacity
           onPress={increment}
-          className="w-12 h-12 bg-blue-500 rounded-r-lg items-center justify-center"
+          style={{ width: 44, height: 44, backgroundColor: "#F5F5F5", borderTopRightRadius: 8, borderBottomRightRadius: 8, alignItems: "center", justifyContent: "center" }}
         >
-          <Text className="text-2xl font-bold text-white">+</Text>
+          <Text style={{ fontSize: 22, fontWeight: "600", color: "#000" }}>+</Text>
         </TouchableOpacity>
-        {unit && <Text className="text-gray-600 ml-2 w-10">{unit}</Text>}
+        {unit && <Text style={{ color: "#6E6E73", marginLeft: 8, width: 36 }}>{unit}</Text>}
       </View>
     </View>
   );

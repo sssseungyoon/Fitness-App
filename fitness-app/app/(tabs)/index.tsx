@@ -369,29 +369,29 @@ export default function Index() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 justify-center items-center">
-        <ActivityIndicator size="large" color="#007AFF" />
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#000" }}>
+        <ActivityIndicator size="large" color="#A0A0A0" />
       </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-100">
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }}>
       {!selectedWorkout ? (
-        <View className="flex-1 p-4">
-          <Text className="text-2xl font-bold text-gray-800 mb-6 text-center">
+        <View style={{ flex: 1, padding: 16 }}>
+          <Text style={{ fontSize: 24, fontWeight: "700", color: "#F5F5F5", marginBottom: 24, textAlign: "center" }}>
             Start Workout
           </Text>
 
           {savedWorkouts.length === 0 ? (
-            <View className="flex-1 justify-center items-center">
-              <Text className="text-gray-500 text-center">
+            <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+              <Text style={{ color: "#6E6E73", textAlign: "center" }}>
                 No workout plans found.{"\n"}Create one in your Profile.
               </Text>
             </View>
           ) : (
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text className="text-gray-600 mb-2">Select a workout:</Text>
+              <Text style={{ color: "#6E6E73", marginBottom: 8, fontSize: 13, fontWeight: "600", letterSpacing: 0.5, textTransform: "uppercase" }}>Select a workout</Text>
               <Dropdown
                 data={savedWorkouts}
                 labelField="name"
@@ -400,20 +400,24 @@ export default function Index() {
                 value={null}
                 onChange={(item) => handleWorkoutSelect(item)}
                 style={{
-                  backgroundColor: "white",
+                  backgroundColor: "#1C1C1E",
                   borderRadius: 12,
                   padding: 16,
                   borderWidth: 1,
-                  borderColor: "#E5E5E5",
+                  borderColor: "#3A3A3C",
                 }}
-                placeholderStyle={{ color: "#999" }}
-                selectedTextStyle={{ color: "#000" }}
+                placeholderStyle={{ color: "#6E6E73" }}
+                selectedTextStyle={{ color: "#F5F5F5" }}
+                containerStyle={{ backgroundColor: "#1C1C1E", borderColor: "#3A3A3C", borderRadius: 12 }}
+                itemTextStyle={{ color: "#E5E5E5" }}
+                itemContainerStyle={{ backgroundColor: "#1C1C1E" }}
+                activeColor="#2C2C2E"
               />
 
               {/* Recent Workouts Section */}
               {recentSessions.length > 0 && (
-                <View className="mt-8">
-                  <Text className="text-xl font-bold text-gray-800 mb-4">
+                <View style={{ marginTop: 32 }}>
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#6E6E73", marginBottom: 16, letterSpacing: 0.5, textTransform: "uppercase" }}>
                     Recent Workouts
                   </Text>
                   {recentSessions.map((session) => (
@@ -429,20 +433,23 @@ export default function Index() {
                           },
                         })
                       }
-                      className="bg-white rounded-xl p-4 mb-3 flex-row justify-between items-center"
                       style={{
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: 0.05,
-                        shadowRadius: 2,
-                        elevation: 1,
+                        backgroundColor: "#1C1C1E",
+                        borderRadius: 12,
+                        padding: 16,
+                        marginBottom: 12,
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        borderWidth: 1,
+                        borderColor: "#2C2C2E",
                       }}
                     >
                       <View>
-                        <Text className="text-lg font-semibold text-gray-800">
+                        <Text style={{ fontSize: 17, fontWeight: "600", color: "#F5F5F5" }}>
                           {session.workoutName}
                         </Text>
-                        <Text className="text-sm text-gray-500">
+                        <Text style={{ fontSize: 13, color: "#6E6E73", marginTop: 4 }}>
                           {new Date(session.date).toLocaleDateString("en-US", {
                             month: "short",
                             day: "numeric",
@@ -450,7 +457,7 @@ export default function Index() {
                           })}
                         </Text>
                       </View>
-                      <Text className="text-gray-400 text-xl">→</Text>
+                      <Text style={{ color: "#4A4A4A", fontSize: 20 }}>→</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -461,17 +468,17 @@ export default function Index() {
       ) : (
         <>
           <ScrollView
-            className="flex-1 p-4"
+            style={{ flex: 1, padding: 16 }}
             keyboardShouldPersistTaps="handled"
           >
-            <View className="flex-row justify-between items-center mb-4">
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <TouchableOpacity onPress={handleBack}>
-                <Text className="text-blue-500">← Back</Text>
+                <Text style={{ color: "#A0A0A0", fontSize: 16 }}>← Back</Text>
               </TouchableOpacity>
-              <Text className="text-xl font-bold text-gray-800">
+              <Text style={{ fontSize: 18, fontWeight: "700", color: "#F5F5F5" }}>
                 {selectedWorkout.name}
               </Text>
-              <View className="w-12" />
+              <View style={{ width: 48 }} />
             </View>
 
             <UnitToggle unit={weightUnit} onToggle={toggleWeightUnit} />
@@ -486,12 +493,12 @@ export default function Index() {
             ))}
           </ScrollView>
 
-          <View className="p-4 bg-white border-t border-gray-200">
+          <View style={{ padding: 16, backgroundColor: "#0A0A0A", borderTopWidth: 0.5, borderTopColor: "#2C2C2E" }}>
             <TouchableOpacity
               onPress={handleSave}
-              className="bg-blue-500 py-4 rounded-xl items-center"
+              style={{ backgroundColor: "#F5F5F5", paddingVertical: 16, borderRadius: 12, alignItems: "center" }}
             >
-              <Text className="text-white font-bold text-lg">Save Workout</Text>
+              <Text style={{ color: "#000", fontWeight: "600", fontSize: 17 }}>Save Workout</Text>
             </TouchableOpacity>
           </View>
         </>

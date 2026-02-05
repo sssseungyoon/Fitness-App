@@ -219,28 +219,28 @@ export default function EditRecord() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 justify-center items-center">
-        <ActivityIndicator size="large" color="#007AFF" />
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#000" }}>
+        <ActivityIndicator size="large" color="#A0A0A0" />
       </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-100" edges={["bottom"]}>
-      <ScrollView className="flex-1 p-4" keyboardShouldPersistTaps="handled">
-        <View className="flex-row justify-between items-center mb-2">
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }} edges={["bottom"]}>
+      <ScrollView style={{ flex: 1, padding: 16 }} keyboardShouldPersistTaps="handled">
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Text className="text-blue-500">← Back</Text>
+            <Text style={{ color: "#A0A0A0", fontSize: 16 }}>← Back</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={handleDelete}>
-            <Text className="text-red-500">Delete</Text>
+            <Text style={{ color: "#FF453A", fontSize: 16 }}>Delete</Text>
           </TouchableOpacity>
         </View>
 
-        <Text className="text-xl font-bold text-gray-800 text-center mb-1">
+        <Text style={{ fontSize: 20, fontWeight: "700", color: "#F5F5F5", textAlign: "center", marginBottom: 4 }}>
           {workoutName}
         </Text>
-        <Text className="text-sm text-gray-500 text-center mb-4">
+        <Text style={{ fontSize: 14, color: "#6E6E73", textAlign: "center", marginBottom: 16 }}>
           {formattedDate}
         </Text>
 
@@ -256,15 +256,18 @@ export default function EditRecord() {
         ))}
       </ScrollView>
 
-      <View className="p-4 bg-white border-t border-gray-200">
+      <View style={{ padding: 16, backgroundColor: "#0A0A0A", borderTopWidth: 0.5, borderTopColor: "#2C2C2E" }}>
         <TouchableOpacity
           onPress={handleSave}
           disabled={isSaving}
-          className={`py-4 rounded-xl items-center ${
-            isSaving ? "bg-gray-400" : "bg-blue-500"
-          }`}
+          style={{
+            paddingVertical: 16,
+            borderRadius: 12,
+            alignItems: "center",
+            backgroundColor: isSaving ? "#3A3A3C" : "#F5F5F5",
+          }}
         >
-          <Text className="text-white font-bold text-lg">
+          <Text style={{ color: isSaving ? "#6E6E73" : "#000", fontWeight: "600", fontSize: 17 }}>
             {isSaving ? "Saving..." : "Save Changes"}
           </Text>
         </TouchableOpacity>

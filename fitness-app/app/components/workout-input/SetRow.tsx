@@ -35,12 +35,12 @@ export const SetRow = ({
   const weightStep = getWeightStep();
 
   return (
-    <View className="bg-gray-50 rounded-lg p-3 mb-2">
-      <View className="flex-row justify-between items-center mb-2">
-        <Text className="font-semibold text-gray-800">Set {setIndex + 1}</Text>
+    <View style={{ backgroundColor: "#0A0A0A", borderRadius: 10, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: "#2C2C2E" }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <Text style={{ fontWeight: "600", color: "#F5F5F5" }}>Set {setIndex + 1}</Text>
         {canRemove && (
           <TouchableOpacity onPress={onRemove}>
-            <Text className="text-red-500 text-sm">Remove</Text>
+            <Text style={{ color: "#FF453A", fontSize: 13 }}>Remove</Text>
           </TouchableOpacity>
         )}
       </View>

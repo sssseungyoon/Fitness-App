@@ -246,7 +246,17 @@ const initializeDatabase = async (db: SQLiteDatabase) => {
 export default function RootLayout() {
   return (
     <SQLiteProvider databaseName={USER_DB} onInit={initializeDatabase}>
-      <Stack>
+      <Stack
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: "#0A0A0A",
+          },
+          headerTintColor: "#F5F5F5",
+          contentStyle: {
+            backgroundColor: "#000",
+          },
+        }}
+      >
         <Stack.Screen
           name="(tabs)"
           options={{

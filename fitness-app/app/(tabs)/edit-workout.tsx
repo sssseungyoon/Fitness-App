@@ -135,8 +135,9 @@ const AddExerciseModal = ({
               style={styles.input}
               value={exerciseName}
               placeholder="e.g., Seated Row Machine"
-              placeholderTextColor="#999"
+              placeholderTextColor="#6E6E73"
               onChangeText={setExerciseName}
+              selectionColor="#A0A0A0"
             />
 
             <Text style={[styles.label, { marginTop: 16 }]}>Muscle Group</Text>
@@ -144,6 +145,10 @@ const AddExerciseModal = ({
               style={styles.dropdown}
               placeholderStyle={styles.placeholderStyle}
               selectedTextStyle={styles.selectedTextStyle}
+              containerStyle={{ backgroundColor: "#1C1C1E", borderColor: "#3A3A3C", borderRadius: 10 }}
+              itemTextStyle={{ color: "#E5E5E5" }}
+              itemContainerStyle={{ backgroundColor: "#1C1C1E" }}
+              activeColor="#2C2C2E"
               data={MUSCLE_GROUPS}
               maxHeight={300}
               labelField="label"
@@ -160,6 +165,10 @@ const AddExerciseModal = ({
               style={styles.dropdown}
               placeholderStyle={styles.placeholderStyle}
               selectedTextStyle={styles.selectedTextStyle}
+              containerStyle={{ backgroundColor: "#1C1C1E", borderColor: "#3A3A3C", borderRadius: 10 }}
+              itemTextStyle={{ color: "#E5E5E5" }}
+              itemContainerStyle={{ backgroundColor: "#1C1C1E" }}
+              activeColor="#2C2C2E"
               data={EQUIPMENT_TYPES}
               maxHeight={200}
               labelField="label"
@@ -171,7 +180,7 @@ const AddExerciseModal = ({
 
             <View style={styles.isolationToggleRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Isolation Exercise</Text>
+                <Text style={[styles.label, { marginBottom: 0 }]}>Isolation Exercise</Text>
                 <Text style={styles.isolationHint}>
                   Track left/right reps separately
                 </Text>
@@ -179,8 +188,8 @@ const AddExerciseModal = ({
               <Switch
                 value={isIsolation}
                 onValueChange={setIsIsolation}
-                trackColor={{ false: "#DDD", true: "#007AFF" }}
-                thumbColor="#FFF"
+                trackColor={{ false: "#3A3A3C", true: "#A0A0A0" }}
+                thumbColor="#F5F5F5"
               />
             </View>
 
@@ -350,8 +359,8 @@ export default function EditWorkout() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 justify-center ">
-        <ActivityIndicator size="large" color="#0000ff" />
+      <View style={{ flex: 1, justifyContent: "center", backgroundColor: "#000" }}>
+        <ActivityIndicator size="large" color="#A0A0A0" />
       </View>
     );
   }
@@ -396,9 +405,9 @@ export default function EditWorkout() {
     <View style={styles.workoutCard}>
       <View style={styles.savedCardHeader}>
         <Text style={styles.savedWorkoutTitle}>{workout.name}</Text>
-        <View className="flex-row">
-          <TouchableOpacity onPress={() => onEdit(workout)} className="mr-3">
-            <Text className="text-blue-500 text-sm font-semibold">Edit</Text>
+        <View style={{ flexDirection: "row" }}>
+          <TouchableOpacity onPress={() => onEdit(workout)} style={{ marginRight: 16 }}>
+            <Text style={{ color: "#A0A0A0", fontSize: 13, fontWeight: "600" }}>Edit</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => onDelete(workout.id)}>
             <Text style={styles.deleteIconText}>Remove</Text>
@@ -520,7 +529,7 @@ export default function EditWorkout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.container}>
         <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <Text>Saved Plans</Text>
+          <Text style={{ color: "#6E6E73", fontSize: 13, fontWeight: "600", letterSpacing: 1, textTransform: "uppercase", marginBottom: 12 }}>Saved Plans</Text>
           {savedWorkouts.map((workout) => (
             <SavedPlanCard
               key={workout.id}
@@ -680,8 +689,9 @@ const ExercisePickerModal = ({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <SafeAreaView style={styles.pickerModalContainer}>
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+      <View style={{ flex: 1, backgroundColor: "#000" }}>
+      <SafeAreaView style={styles.pickerModalContainer} edges={["top"]}>
         <View style={styles.pickerModalHeader}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <Text style={styles.closeButtonText}>✕</Text>
@@ -694,11 +704,12 @@ const ExercisePickerModal = ({
           <TextInput
             style={styles.searchInput}
             placeholder="Search exercises..."
-            placeholderTextColor="#8E8E93"
+            placeholderTextColor="#6E6E73"
             value={searchText}
             onChangeText={setSearchText}
             autoCapitalize="none"
             autoCorrect={false}
+            selectionColor="#A0A0A0"
           />
         </View>
 
@@ -708,8 +719,10 @@ const ExercisePickerModal = ({
           renderItem={renderExerciseItem}
           keyboardShouldPersistTaps="handled"
           style={styles.exerciseList}
+          showsVerticalScrollIndicator={false}
         />
       </SafeAreaView>
+      </View>
     </Modal>
   );
 };
@@ -883,52 +896,49 @@ const WorkoutCard = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F2F2F7",
+    backgroundColor: "#000",
   },
   scrollContainer: {
     padding: 16,
   },
   workoutCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#1C1C1E",
     borderRadius: 12,
     padding: 16,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#2C2C2E",
   },
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
-    color: "#444",
+    color: "#8E8E93",
     marginBottom: 6,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   input: {
     height: 45,
     borderWidth: 1,
-    borderColor: "#DDD",
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    borderColor: "#3A3A3C",
+    borderRadius: 10,
+    paddingHorizontal: 14,
     fontSize: 16,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: "#0A0A0A",
+    color: "#F5F5F5",
     marginBottom: 10,
   },
   exerciseRow: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 8,
-    backgroundColor: "#FFF",
+    backgroundColor: "#1C1C1E",
   },
   exerciseRowDragging: {
-    backgroundColor: "#E8F4FD",
-    borderRadius: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
+    backgroundColor: "#2C2C2E",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#4A4A4A",
   },
   dragHandle: {
     paddingHorizontal: 8,
@@ -938,22 +948,22 @@ const styles = StyleSheet.create({
   },
   dragHandleText: {
     fontSize: 20,
-    color: "#999",
+    color: "#6E6E73",
     fontWeight: "bold",
   },
   dragHint: {
     fontSize: 12,
-    color: "#8E8E93",
+    color: "#6E6E73",
     marginBottom: 8,
     fontStyle: "italic",
   },
   dropdown: {
     height: 45,
-    borderColor: "#DDD",
+    borderColor: "#3A3A3C",
     borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    backgroundColor: "#FFF",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    backgroundColor: "#0A0A0A",
   },
   inlineDeleteButton: {
     padding: 10,
@@ -961,113 +971,123 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   deleteText: {
-    color: "#FF3B30",
-    fontSize: 20,
-    fontWeight: "bold",
+    color: "#FF453A",
+    fontSize: 18,
+    fontWeight: "600",
   },
   addExerciseButton: {
-    marginTop: 8,
-    padding: 10,
+    marginTop: 12,
+    padding: 12,
     alignItems: "center",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#3A3A3C",
+    borderStyle: "dashed",
   },
   addExerciseText: {
-    color: "#007AFF",
+    color: "#A0A0A0",
     fontWeight: "600",
   },
   deleteWorkoutButton: {
-    backgroundColor: "#FFF1F0",
+    backgroundColor: "rgba(255, 69, 58, 0.1)",
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: "center",
-    marginTop: 10,
+    marginTop: 12,
     borderWidth: 1,
-    borderColor: "#FFA39E",
+    borderColor: "rgba(255, 69, 58, 0.3)",
   },
   deleteWorkoutText: {
-    color: "#CF1322",
+    color: "#FF453A",
     fontWeight: "600",
   },
   footerActions: {
     padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: "#DDD",
-    backgroundColor: "#FFF",
+    borderTopWidth: 0.5,
+    borderTopColor: "#2C2C2E",
+    backgroundColor: "#0A0A0A",
   },
   primaryButton: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "#F5F5F5",
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: "center",
     marginBottom: 12,
   },
   secondaryButton: {
-    backgroundColor: "#FFF",
+    backgroundColor: "transparent",
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#007AFF",
+    borderColor: "#4A4A4A",
   },
   buttonText: {
-    color: "#FFF",
+    color: "#000",
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "600",
   },
   secondaryButtonText: {
-    color: "#007AFF",
+    color: "#A0A0A0",
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "600",
   },
   placeholderStyle: {
     fontSize: 16,
-    color: "#999",
+    color: "#6E6E73",
   },
   selectedTextStyle: {
     fontSize: 16,
-    color: "#000",
+    color: "#E5E5E5",
+    flex: 1,
   },
   savedWorkoutTitle: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#1C1C1E",
+    fontWeight: "600",
+    color: "#F5F5F5",
     marginBottom: 8,
   },
   divider: {
-    height: 1,
-    backgroundColor: "#EEE",
+    height: 0.5,
+    backgroundColor: "#3A3A3C",
     marginBottom: 12,
   },
   savedExerciseRow: {
     flexDirection: "row",
-    marginBottom: 4,
+    marginBottom: 6,
     alignItems: "center",
   },
   bullet: {
-    fontSize: 18,
-    color: "#007AFF",
-    marginRight: 8,
-    width: 10,
+    fontSize: 8,
+    color: "#A0A0A0",
+    marginRight: 10,
   },
   savedExerciseText: {
-    fontSize: 16,
-    color: "#3A3A3C",
+    fontSize: 15,
+    color: "#B0B0B0",
   },
   sectionHeader: {
-    backgroundColor: "#F2F2F7",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E5EA",
+    backgroundColor: "#0A0A0A",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#2C2C2E",
   },
   sectionHeaderText: {
     fontSize: 11,
-    fontWeight: "800",
-    color: "#8E8E93",
-    letterSpacing: 1,
+    fontWeight: "700",
+    color: "#6E6E73",
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
   },
   dropdownItem: {
-    padding: 15,
-    backgroundColor: "#FFF",
+    padding: 16,
+    backgroundColor: "#000",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#1C1C1E",
   },
   dropdownListContainer: {
     borderRadius: 12,
@@ -1076,7 +1096,8 @@ const styles = StyleSheet.create({
   },
   itemTextMain: {
     fontSize: 16,
-    color: "#000",
+    color: "#E5E5E5",
+    fontWeight: "400",
   },
   savedCardHeader: {
     flexDirection: "row",
@@ -1085,26 +1106,23 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   deleteIconText: {
-    color: "#FF3B30",
-    fontSize: 14,
+    color: "#FF453A",
+    fontSize: 13,
     fontWeight: "600",
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
     justifyContent: "center",
     alignItems: "center",
   },
   modalContent: {
-    backgroundColor: "#FFF",
+    backgroundColor: "#1C1C1E",
     borderRadius: 16,
     width: "90%",
     maxWidth: 400,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 10,
+    borderWidth: 1,
+    borderColor: "#2C2C2E",
   },
   modalHeader: {
     flexDirection: "row",
@@ -1112,52 +1130,57 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#EEE",
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#3A3A3C",
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#1C1C1E",
+    fontWeight: "600",
+    color: "#F5F5F5",
   },
   closeButton: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#2C2C2E",
+    borderRadius: 18,
   },
   closeButtonText: {
-    fontSize: 20,
-    color: "#8E8E93",
+    fontSize: 16,
+    color: "#A0A0A0",
+    fontWeight: "600",
   },
   modalBody: {
     padding: 20,
   },
   addCustomItem: {
-    padding: 15,
-    backgroundColor: "#E8F4FD",
-    borderBottomWidth: 1,
-    borderBottomColor: "#B8D9F0",
+    padding: 16,
+    backgroundColor: "#1C1C1E",
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#2C2C2E",
+    borderLeftWidth: 3,
+    borderLeftColor: "#A0A0A0",
   },
   addCustomItemText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#007AFF",
+    color: "#A0A0A0",
+    letterSpacing: 0.3,
   },
   customExerciseItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#FFF9E6",
+    backgroundColor: "#141414",
+    borderLeftWidth: 2,
+    borderLeftColor: "#4A4A4A",
   },
   customExerciseText: {
-    color: "#996600",
+    color: "#B0B0B0",
   },
   deleteExerciseButton: {
     padding: 8,
   },
   deleteExerciseIcon: {
-    fontSize: 16,
+    fontSize: 14,
   },
   inputSearchStyle: {
     height: 40,
@@ -1173,74 +1196,79 @@ const styles = StyleSheet.create({
   },
   isolationHint: {
     fontSize: 12,
-    color: "#8E8E93",
+    color: "#6E6E73",
     marginTop: 2,
   },
-  // Exercise Picker Modal styles
+  // Exercise Picker Modal styles - Dark theme with silver accents
   pickerModalContainer: {
     flex: 1,
-    backgroundColor: "#F2F2F7",
+    backgroundColor: "#000",
   },
   pickerModalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#FFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E5EA",
+    paddingVertical: 14,
+    backgroundColor: "#0A0A0A",
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#333",
   },
   pickerModalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#1C1C1E",
+    fontSize: 17,
+    fontWeight: "600",
+    color: "#F5F5F5",
+    letterSpacing: 0.3,
   },
   searchContainer: {
-    backgroundColor: "#FFF",
+    backgroundColor: "#0A0A0A",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E5EA",
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#333",
   },
   searchInput: {
-    height: 40,
-    backgroundColor: "#F2F2F7",
-    borderRadius: 10,
+    height: 42,
+    backgroundColor: "#1C1C1E",
+    borderRadius: 12,
     paddingHorizontal: 16,
     fontSize: 16,
-    color: "#000",
+    color: "#F5F5F5",
+    borderWidth: 1,
+    borderColor: "#2C2C2E",
   },
   exerciseList: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: "#000",
   },
   selectedExerciseItem: {
-    backgroundColor: "#E8F4FD",
+    backgroundColor: "#1C1C1E",
+    borderLeftWidth: 3,
+    borderLeftColor: "#A0A0A0",
   },
   selectedExerciseText: {
-    color: "#007AFF",
+    color: "#F5F5F5",
     fontWeight: "600",
   },
   checkmark: {
-    color: "#007AFF",
-    fontSize: 18,
-    fontWeight: "bold",
+    color: "#A0A0A0",
+    fontSize: 16,
+    fontWeight: "600",
   },
   selectorButton: {
     height: 45,
-    borderColor: "#DDD",
+    borderColor: "#3A3A3C",
     borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    backgroundColor: "#FFF",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    backgroundColor: "#1C1C1E",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
   dropdownArrow: {
     fontSize: 10,
-    color: "#8E8E93",
+    color: "#6E6E73",
     marginLeft: 8,
   },
 });

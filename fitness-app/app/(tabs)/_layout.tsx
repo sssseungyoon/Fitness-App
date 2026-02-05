@@ -6,8 +6,20 @@ const _layout = () => {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: "#007AFF", // Standard iOS blue
-        tabBarInactiveTintColor: "gray",
+        tabBarActiveTintColor: "#F5F5F5",
+        tabBarInactiveTintColor: "#6E6E73",
+        tabBarStyle: {
+          backgroundColor: "#0A0A0A",
+          borderTopColor: "#2C2C2E",
+          borderTopWidth: 0.5,
+        },
+        headerStyle: {
+          backgroundColor: "#0A0A0A",
+        },
+        headerTintColor: "#F5F5F5",
+        headerTitleStyle: {
+          fontWeight: "600",
+        },
       }}
     >
       <Tabs.Screen
