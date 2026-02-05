@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   Modal,
   ScrollView,
   StyleSheet,
@@ -442,10 +443,10 @@ export default function EditWorkout() {
 
           if (editingWorkoutId) {
             // Update existing workout name instead of deleting
-            await db.runAsync(
-              `UPDATE Workouts SET name = ? WHERE id = ?`,
-              [workout.name || "New Workout", editingWorkoutId]
-            );
+            await db.runAsync(`UPDATE Workouts SET name = ? WHERE id = ?`, [
+              workout.name || "New Workout",
+              editingWorkoutId,
+            ]);
             workoutId = editingWorkoutId;
 
             // Clear only the exercise associations (not the workout itself)
@@ -542,7 +543,9 @@ export default function EditWorkout() {
                 style={styles.deleteWorkoutButton}
                 onPress={() => removeWorkoutRow(workout.rowId)}
               >
-                <Text style={styles.deleteWorkoutText}>Remove This Workout</Text>
+                <Text style={styles.deleteWorkoutText}>
+                  Remove This Workout
+                </Text>
               </TouchableOpacity>
             </View>
           ))}
@@ -553,7 +556,9 @@ export default function EditWorkout() {
             style={styles.secondaryButton}
             onPress={addWorkoutRow}
           >
-            <Text style={styles.secondaryButtonText}>+ Add Another Workout</Text>
+            <Text style={styles.secondaryButtonText}>
+              + Add Another Workout
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -574,33 +579,54 @@ export default function EditWorkout() {
   );
 }
 
-const DropdownComponent = ({
-  labelField,
-  valueField,
-  placeholder,
+// Exercise Picker Modal Component
+const ExercisePickerModal = ({
+  visible,
+  onClose,
+  onSelect,
   data,
-  onValueChange,
-  initialValue,
+  selectedValue,
   onAddCustomExercise,
   onDeleteCustomExercise,
-}: any) => {
-  const [value, setValue] = useState(initialValue ?? null);
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSelect: (id: number) => void;
+  data: any[];
+  selectedValue: number | null;
+  onAddCustomExercise: () => void;
+  onDeleteCustomExercise: (id: number, name: string) => void;
+}) => {
+  const [searchText, setSearchText] = useState("");
 
-  const renderItem = (item: any) => {
+  const filteredData = searchText
+    ? data.filter(
+        (item: any) =>
+          item.id === ADD_CUSTOM_EXERCISE_ID ||
+          item.name?.toLowerCase().includes(searchText.toLowerCase())
+      )
+    : data;
+
+  const renderExerciseItem = ({ item, index }: { item: any; index: number }) => {
     if (item.id === ADD_CUSTOM_EXERCISE_ID) {
       return (
-        <View style={styles.addCustomItem}>
+        <TouchableOpacity
+          style={styles.addCustomItem}
+          onPress={() => {
+            onAddCustomExercise();
+            onClose();
+          }}
+        >
           <Text style={styles.addCustomItemText}>{item.name}</Text>
-        </View>
+        </TouchableOpacity>
       );
     }
 
-    const currentIndex = data.findIndex((i: any) => i.id === item.id);
     const isCustom = item.is_custom === 1;
-    const prevItem = currentIndex > 0 ? data[currentIndex - 1] : null;
+    const prevItem = index > 0 ? filteredData[index - 1] : null;
 
     let isNewSection = false;
-    if (currentIndex === 1) {
+    if (index === 1 || (index === 0 && filteredData[0]?.id !== ADD_CUSTOM_EXERCISE_ID)) {
       isNewSection = true;
     } else if (prevItem && prevItem.id !== ADD_CUSTOM_EXERCISE_ID) {
       if (isCustom !== (prevItem.is_custom === 1)) {
@@ -611,6 +637,7 @@ const DropdownComponent = ({
     }
 
     const sectionLabel = isCustom ? "CUSTOM" : item.muscle_group?.toUpperCase();
+    const isSelected = item.id === selectedValue;
 
     return (
       <View>
@@ -619,57 +646,126 @@ const DropdownComponent = ({
             <Text style={styles.sectionHeaderText}>{sectionLabel}</Text>
           </View>
         )}
-        <View
-          style={[styles.dropdownItem, isCustom && styles.customExerciseItem]}
+        <TouchableOpacity
+          style={[
+            styles.dropdownItem,
+            isCustom && styles.customExerciseItem,
+            isSelected && styles.selectedExerciseItem,
+          ]}
+          onPress={() => onSelect(item.id)}
         >
           <Text
-            style={[styles.itemTextMain, isCustom && styles.customExerciseText]}
+            style={[
+              styles.itemTextMain,
+              isCustom && styles.customExerciseText,
+              isSelected && styles.selectedExerciseText,
+            ]}
           >
             {item.name}
           </Text>
           {isCustom && (
             <TouchableOpacity
-              onPress={(e) => {
-                e.stopPropagation();
-                onDeleteCustomExercise(item.id, item.name);
-              }}
+              onPress={() => onDeleteCustomExercise(item.id, item.name)}
               style={styles.deleteExerciseButton}
             >
               <Text style={styles.deleteExerciseIcon}>🗑️</Text>
             </TouchableOpacity>
           )}
-        </View>
+          {isSelected && !isCustom && (
+            <Text style={styles.checkmark}>✓</Text>
+          )}
+        </TouchableOpacity>
       </View>
     );
   };
 
   return (
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <SafeAreaView style={styles.pickerModalContainer}>
+        <View style={styles.pickerModalHeader}>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Text style={styles.closeButtonText}>✕</Text>
+          </TouchableOpacity>
+          <Text style={styles.pickerModalTitle}>Select Exercise</Text>
+          <View style={{ width: 40 }} />
+        </View>
+
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search exercises..."
+            placeholderTextColor="#8E8E93"
+            value={searchText}
+            onChangeText={setSearchText}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
+
+        <FlatList
+          data={filteredData}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderExerciseItem}
+          keyboardShouldPersistTaps="handled"
+          style={styles.exerciseList}
+        />
+      </SafeAreaView>
+    </Modal>
+  );
+};
+
+// Exercise Selector Component (replaces DropdownComponent)
+const ExerciseSelector = ({
+  placeholder,
+  data,
+  onValueChange,
+  initialValue,
+  onAddCustomExercise,
+  onDeleteCustomExercise,
+}: {
+  placeholder: string;
+  data: any[];
+  onValueChange: (id: number) => void;
+  initialValue: number | null;
+  onAddCustomExercise: () => void;
+  onDeleteCustomExercise: (id: number, name: string) => void;
+}) => {
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedId, setSelectedId] = useState<number | null>(initialValue);
+
+  const selectedExercise = data.find((e: any) => e.id === selectedId);
+
+  return (
     <View style={{ flex: 1 }}>
-      <Dropdown
-        style={styles.dropdown}
-        placeholderStyle={styles.placeholderStyle}
-        selectedTextStyle={styles.selectedTextStyle}
-        containerStyle={styles.dropdownListContainer}
-        inputSearchStyle={styles.inputSearchStyle}
-        data={data}
-        maxHeight={400}
-        labelField={labelField}
-        valueField={valueField}
-        placeholder={placeholder}
-        value={value}
-        autoScroll={false}
-        search
-        searchPlaceholder="Search exercises..."
-        onChange={(item) => {
-          if (item.id === ADD_CUSTOM_EXERCISE_ID) {
-            onAddCustomExercise();
-            return;
+      <TouchableOpacity
+        style={styles.selectorButton}
+        onPress={() => setModalVisible(true)}
+      >
+        <Text
+          style={
+            selectedExercise
+              ? styles.selectedTextStyle
+              : styles.placeholderStyle
           }
-          const val = item[valueField];
-          setValue(val);
-          onValueChange(val);
+          numberOfLines={1}
+        >
+          {selectedExercise?.name || placeholder}
+        </Text>
+        <Text style={styles.dropdownArrow}>▼</Text>
+      </TouchableOpacity>
+
+      <ExercisePickerModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onSelect={(id) => {
+          setSelectedId(id);
+          onValueChange(id);
+          setModalVisible(false);
         }}
-        renderItem={renderItem}
+        data={data}
+        selectedValue={selectedId}
+        onAddCustomExercise={onAddCustomExercise}
+        onDeleteCustomExercise={onDeleteCustomExercise}
       />
     </View>
   );
@@ -712,7 +808,11 @@ const WorkoutCard = ({
     }
   };
 
-  const handleDragEnd = ({ data: reorderedData }: { data: ExerciseRowData[] }) => {
+  const handleDragEnd = ({
+    data: reorderedData,
+  }: {
+    data: ExerciseRowData[];
+  }) => {
     exerciseUpdate(data.rowId, reorderedData);
   };
 
@@ -723,10 +823,7 @@ const WorkoutCard = ({
   }: RenderItemParams<ExerciseRowData>) => (
     <ScaleDecorator>
       <View
-        style={[
-          styles.exerciseRow,
-          isActive && styles.exerciseRowDragging,
-        ]}
+        style={[styles.exerciseRow, isActive && styles.exerciseRowDragging]}
       >
         <TouchableOpacity
           onLongPress={drag}
@@ -736,14 +833,10 @@ const WorkoutCard = ({
           <Text style={styles.dragHandleText}>≡</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <DropdownComponent
-            labelField="name"
-            valueField="id"
+          <ExerciseSelector
             placeholder="Select Exercise"
             data={exerciseList}
-            onValueChange={(id: number) =>
-              handleSelectExercise(item.rowId, id)
-            }
+            onValueChange={(id: number) => handleSelectExercise(item.rowId, id)}
             initialValue={item.exerciseId}
             onAddCustomExercise={onAddCustomExercise}
             onDeleteCustomExercise={onDeleteCustomExercise}
@@ -1082,5 +1175,72 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#8E8E93",
     marginTop: 2,
+  },
+  // Exercise Picker Modal styles
+  pickerModalContainer: {
+    flex: 1,
+    backgroundColor: "#F2F2F7",
+  },
+  pickerModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#FFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E5EA",
+  },
+  pickerModalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#1C1C1E",
+  },
+  searchContainer: {
+    backgroundColor: "#FFF",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E5EA",
+  },
+  searchInput: {
+    height: 40,
+    backgroundColor: "#F2F2F7",
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: "#000",
+  },
+  exerciseList: {
+    flex: 1,
+    backgroundColor: "#FFF",
+  },
+  selectedExerciseItem: {
+    backgroundColor: "#E8F4FD",
+  },
+  selectedExerciseText: {
+    color: "#007AFF",
+    fontWeight: "600",
+  },
+  checkmark: {
+    color: "#007AFF",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  selectorButton: {
+    height: 45,
+    borderColor: "#DDD",
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "#FFF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  dropdownArrow: {
+    fontSize: 10,
+    color: "#8E8E93",
+    marginLeft: 8,
   },
 });
