@@ -1,4 +1,4 @@
-import { SQLiteDatabase, SQLiteProvider, useSQLiteContext } from "expo-sqlite";
+import { useSQLiteContext } from "expo-sqlite";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { EditWorkoutView } from "./edit-workout";
+import EditWorkoutView from "./edit-workout";
 
 interface SavedWorkout {
   id: number;
@@ -49,20 +49,20 @@ const SaveAndCancelButton = ({ handleOnSave, handleOnCancel }: any) => (
 
 // Saved Workout Plan Card
 const SavedPlanCard = ({ workout }: { workout: SavedWorkout }) => (
-  <View className="bg-white rounded-xl p-4 mb-3 shadow-sm">
-    <Text className="text-lg font-bold text-gray-800 mb-2">{workout.name}</Text>
-    <View className="border-t border-gray-100 pt-2">
+  <View style={{ backgroundColor: "#1C1C1E", borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: "#2C2C2E" }}>
+    <Text style={{ fontSize: 17, fontWeight: "600", color: "#F5F5F5", marginBottom: 8 }}>{workout.name}</Text>
+    <View style={{ borderTopWidth: 0.5, borderTopColor: "#3A3A3C", paddingTop: 8 }}>
       {workout.exercises.map((ex, index) => (
         <View
           key={`${workout.id}-${ex.id}-${index}`}
-          className="flex-row items-center py-1"
+          style={{ flexDirection: "row", alignItems: "center", paddingVertical: 4 }}
         >
-          <Text className="text-blue-500 mr-2">•</Text>
-          <Text className="text-gray-600">{ex.name}</Text>
+          <Text style={{ color: "#A0A0A0", marginRight: 8, fontSize: 8 }}>•</Text>
+          <Text style={{ color: "#B0B0B0", fontSize: 15 }}>{ex.name}</Text>
         </View>
       ))}
       {workout.exercises.length === 0 && (
-        <Text className="text-gray-400 italic">No exercises added</Text>
+        <Text style={{ color: "#6E6E73", fontStyle: "italic" }}>No exercises added</Text>
       )}
     </View>
   </View>
@@ -155,32 +155,33 @@ const UserDetails = ({
 
 const UserForm = ({ form, setForm, handleSubmitNewUser }: any) => {
   return (
-    <View className="w-4/5 bg-white rounded-xl p-4">
-      <Text className="text-lg font-bold mb-4">Create Profile</Text>
+    <View style={{ width: "85%", backgroundColor: "#1C1C1E", borderRadius: 12, padding: 20, borderWidth: 1, borderColor: "#2C2C2E" }}>
+      <Text style={{ fontSize: 18, fontWeight: "600", marginBottom: 16, color: "#F5F5F5" }}>Create Profile</Text>
       <TextInput
-        className="border border-gray-300 rounded-lg p-3 mb-3"
+        style={{ borderWidth: 1, borderColor: "#3A3A3C", borderRadius: 10, padding: 14, marginBottom: 12, backgroundColor: "#0A0A0A", color: "#F5F5F5", fontSize: 16 }}
         placeholder="First Name"
+        placeholderTextColor="#6E6E73"
         value={form.firstName}
         onChangeText={(text) => setForm({ ...form, firstName: text })}
       />
       <TextInput
-        className="border border-gray-300 rounded-lg p-3 mb-4"
+        style={{ borderWidth: 1, borderColor: "#3A3A3C", borderRadius: 10, padding: 14, marginBottom: 16, backgroundColor: "#0A0A0A", color: "#F5F5F5", fontSize: 16 }}
         placeholder="Last Name"
+        placeholderTextColor="#6E6E73"
         value={form.lastName}
         onChangeText={(text) => setForm({ ...form, lastName: text })}
       />
       <TouchableOpacity
-        className="bg-blue-500 py-3 rounded-lg items-center"
+        style={{ backgroundColor: "#F5F5F5", paddingVertical: 14, borderRadius: 10, alignItems: "center" }}
         onPress={handleSubmitNewUser}
       >
-        <Text className="text-white font-semibold">Create Profile</Text>
+        <Text style={{ color: "#000", fontWeight: "600", fontSize: 16 }}>Create Profile</Text>
       </TouchableOpacity>
     </View>
   );
 };
 
-// ProfileView
-const ProfileView = () => {
+export default function Profile() {
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -201,16 +202,18 @@ const ProfileView = () => {
         workoutName: string;
         exerciseId: number;
         exerciseName: string;
+        exerciseOrder: number;
       }>(`
         SELECT
           w.id AS workoutId,
           w.name AS workoutName,
           e.id AS exerciseId,
-          e.name AS exerciseName
+          e.name AS exerciseName,
+          we.exercise_order AS exerciseOrder
         FROM Workouts w
         LEFT JOIN Workout_Exercises we ON w.id = we.workout_id
         LEFT JOIN Exercises e ON we.exercise_id = e.id
-        ORDER BY w.id DESC
+        ORDER BY w.id DESC, we.exercise_order ASC
       `);
 
       // Group by workout
@@ -255,8 +258,8 @@ const ProfileView = () => {
 
   if (isLoading) {
     return (
-      <View className="flex-1 justify-center">
-        <ActivityIndicator size="large" color="#0000ff" />
+      <View style={{ flex: 1, justifyContent: "center", backgroundColor: "#000" }}>
+        <ActivityIndicator size="large" color="#A0A0A0" />
       </View>
     );
   }
@@ -319,176 +322,142 @@ const ProfileView = () => {
   };
 
   return (
-    <ScrollView
-      className="flex-1 w-full"
-      contentContainerStyle={{ alignItems: "center", paddingBottom: 40 }}
-    >
-      {existingUser ? (
-        <>
-          <UserDetails
-            isEditing={isEditing}
-            setIsEditing={setIsEditing}
-            existingUser={existingUser}
-            handleOnSaveChanges={handleOnSaveChanges}
-            handleOnCancelChanges={handleOnCancelChanges}
-            form={form}
-            setForm={setForm}
-          />
+    <SafeAreaView style={{ flex: 1, alignItems: "center", backgroundColor: "#000" }}>
+      <ScrollView
+        style={{ flex: 1, width: "100%" }}
+        contentContainerStyle={{ alignItems: "center", paddingBottom: 40 }}
+      >
+        {existingUser ? (
+          <>
+            <UserDetails
+              isEditing={isEditing}
+              setIsEditing={setIsEditing}
+              existingUser={existingUser}
+              handleOnSaveChanges={handleOnSaveChanges}
+              handleOnCancelChanges={handleOnCancelChanges}
+              form={form}
+              setForm={setForm}
+            />
 
-          {/* Workout Plans Section */}
-          <View className="w-4/5 mt-4">
-            <View className="flex-row justify-between items-center mb-3">
-              <Text className="text-lg font-bold text-gray-800">
-                Workout Plans
-              </Text>
-              <TouchableOpacity
-                onPress={() => setShowEditModal(true)}
-                className="bg-blue-500 px-4 py-2 rounded-lg"
-              >
-                <Text className="text-white font-semibold">Edit Plans</Text>
-              </TouchableOpacity>
-            </View>
-
-            {savedWorkouts.length === 0 ? (
-              <View className="bg-white rounded-xl p-6 items-center">
-                <Text className="text-gray-500 text-center mb-4">
-                  No workout plans yet
+            {/* Workout Plans Section */}
+            <View style={{ width: "85%", marginTop: 16 }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: "#6E6E73", letterSpacing: 0.5, textTransform: "uppercase" }}>
+                  Workout Plans
                 </Text>
                 <TouchableOpacity
                   onPress={() => setShowEditModal(true)}
-                  className="bg-blue-500 px-6 py-3 rounded-lg"
+                  style={{ backgroundColor: "#F5F5F5", paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}
                 >
-                  <Text className="text-white font-semibold">
-                    Create Your First Plan
+                  <Text style={{ color: "#000", fontWeight: "600" }}>Edit Plans</Text>
+                </TouchableOpacity>
+              </View>
+
+              {savedWorkouts.length === 0 ? (
+                <View style={{ backgroundColor: "#1C1C1E", borderRadius: 12, padding: 24, alignItems: "center", borderWidth: 1, borderColor: "#2C2C2E" }}>
+                  <Text style={{ color: "#6E6E73", textAlign: "center", marginBottom: 16 }}>
+                    No workout plans yet
                   </Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              savedWorkouts.map((workout) => (
-                <SavedPlanCard key={workout.id} workout={workout} />
-              ))
-            )}
-          </View>
+                  <TouchableOpacity
+                    onPress={() => setShowEditModal(true)}
+                    style={{ backgroundColor: "#F5F5F5", paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 }}
+                  >
+                    <Text style={{ color: "#000", fontWeight: "600" }}>
+                      Create Your First Plan
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                savedWorkouts.map((workout) => (
+                  <SavedPlanCard key={workout.id} workout={workout} />
+                ))
+              )}
+            </View>
 
-          {/* Edit Workout Modal */}
-          <Modal
-            visible={showEditModal}
-            animationType="slide"
-            presentationStyle="pageSheet"
-            onRequestClose={handleCloseModal}
-          >
-            <SafeAreaView className="flex-1">
-              <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-200">
-                <TouchableOpacity onPress={handleCloseModal}>
-                  <Text className="text-blue-500 text-lg">Done</Text>
-                </TouchableOpacity>
-                <Text className="text-lg font-bold">Edit Workout Plans</Text>
-                <View className="w-12" />
-              </View>
-              <EditWorkoutView />
-            </SafeAreaView>
-          </Modal>
-        </>
-      ) : (
-        <UserForm
-          form={form}
-          setForm={setForm}
-          handleSubmitNewUser={handleSubmitNewUser}
-        />
-      )}
-    </ScrollView>
-  );
-};
-
-const Profile = () => {
-  const userDB = "userDatabase7.db";
-
-  const handleOnInit = async (db: SQLiteDatabase) => {
-    try {
-      await db.execAsync(`
-        PRAGMA journal_mode = WAL;
-        CREATE TABLE IF NOT EXISTS users (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          firstName TEXT NOT NULL,
-          lastName TEXT NOT NULL,
-          weight_unit TEXT DEFAULT 'kg'
-        );
-      `);
-    } catch (Error: any) {
-      console.log(Error);
-    }
-  };
-
-  return (
-    <SafeAreaView className="flex-1 items-center bg-gray-100">
-      <SQLiteProvider
-        databaseName={userDB}
-        onInit={handleOnInit}
-        options={{
-          useNewConnection: false,
-        }}
-      >
-        <ProfileView />
-      </SQLiteProvider>
+            {/* Edit Workout Modal */}
+            <Modal
+              visible={showEditModal}
+              animationType="slide"
+              presentationStyle="pageSheet"
+              onRequestClose={handleCloseModal}
+            >
+              <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: "#2C2C2E", backgroundColor: "#0A0A0A" }}>
+                  <TouchableOpacity onPress={handleCloseModal}>
+                    <Text style={{ color: "#A0A0A0", fontSize: 17 }}>Done</Text>
+                  </TouchableOpacity>
+                  <Text style={{ fontSize: 17, fontWeight: "600", color: "#F5F5F5" }}>Edit Workout Plans</Text>
+                  <View style={{ width: 48 }} />
+                </View>
+                <EditWorkoutView />
+              </SafeAreaView>
+            </Modal>
+          </>
+        ) : (
+          <UserForm
+            form={form}
+            setForm={setForm}
+            handleSubmitNewUser={handleSubmitNewUser}
+          />
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   tableContainer: {
-    width: "80%",
-    backgroundColor: "#ffffff",
+    width: "85%",
+    backgroundColor: "#1C1C1E",
     borderRadius: 12,
-    paddingHorizontal: 15,
+    paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: "#e1e4e8",
+    borderColor: "#2C2C2E",
     marginVertical: 20,
   },
   tableHeader: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#444",
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#6E6E73",
+    paddingVertical: 14,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#3A3A3C",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    paddingVertical: 14,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#2C2C2E",
   },
   noBorder: {
     borderBottomWidth: 0,
   },
   label: {
     fontSize: 14,
-    color: "#888",
+    color: "#8E8E93",
     fontWeight: "500",
   },
   value: {
     fontSize: 14,
-    color: "#333",
+    color: "#F5F5F5",
     fontWeight: "600",
   },
   buttonContainer: {
-    marginTop: 20,
+    marginTop: 16,
+    marginBottom: 8,
     gap: 12,
   },
   editButton: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "#F5F5F5",
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: "center",
-    shadowColor: "#007AFF",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 3,
   },
   editText: {
-    color: "#FFFFFF",
+    color: "#000",
     fontSize: 16,
     fontWeight: "600",
   },
@@ -498,13 +467,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#FF3B30",
+    borderColor: "#FF453A",
   },
   deleteText: {
-    color: "#FF3B30",
+    color: "#FF453A",
     fontSize: 16,
     fontWeight: "500",
   },
 });
-
-export default Profile;
