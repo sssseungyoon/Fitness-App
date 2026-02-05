@@ -1,25 +1,27 @@
 {
   "expo": {
     "name": "Glog",
-    "slug": "fitness-app",
+    "slug": "glog-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon_v3.png",
+    "icon": "./assets/images/glog_logo.png",
     "scheme": "fitnessapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "icon": "./assets/images/icon_v3.png",
+      "icon": "./assets/images/glog_logo.png",
       "supportsTablet": true
     },
     "android": {
+      "package": "com.seungyoon.glog",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/icon_v3.png"
+        "foregroundImage": "./assets/images/glog_logo.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "package": "com.seungyoon7744.fitnessapp"
+      "predictiveBackGestureEnabled": false
+      
     },
     "web": {
       "bundler": "metro",
@@ -31,13 +33,10 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/glog_logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#000000"
-          }
+          "backgroundColor": "#000000"
         }
       ],
       "expo-sqlite"

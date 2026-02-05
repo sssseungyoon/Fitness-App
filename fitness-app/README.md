@@ -1,50 +1,112 @@
-# Welcome to your Expo app 👋
+# Glog
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A sleek, dark-themed fitness tracking app built with React Native and Expo.
 
-## Get started
+## Features
 
-1. Install dependencies
+- **Workout Planning** - Create and manage custom workout plans with drag-and-drop exercise ordering
+- **Exercise Library** - 80+ preset exercises across 12 muscle groups, plus custom exercise support
+- **Performance Tracking** - Log sets, reps, weight, and half-reps for each exercise
+- **Isolation Exercise Support** - Track left/right reps separately for unilateral exercises
+- **Workout History** - View past workouts organized by month with full session details
+- **Progress Persistence** - Auto-saves workout progress when navigating between tabs
+- **Unit Toggle** - Switch between kg and lbs
 
-   ```bash
-   npm install
-   ```
+## Tech Stack
 
-2. Start the app
+- **Framework**: React Native with Expo SDK 54
+- **Navigation**: Expo Router (file-based routing)
+- **Language**: TypeScript
+- **Styling**: NativeWind (Tailwind CSS) + StyleSheet
+- **Database**: expo-sqlite (local SQLite)
+- **State Management**: React useState hooks
 
-   ```bash
-   npx expo start
-   ```
+## Getting Started
 
-In the output, you'll find options to open the app in a
+### Prerequisites
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- Node.js 18+
+- npm or yarn
+- Expo CLI
+- iOS Simulator (Mac) or Android Emulator
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+### Installation
 
 ```bash
-npm run reset-project
+# Clone the repository
+git clone https://github.com/yourusername/fitness-app.git
+cd fitness-app
+
+# Install dependencies
+npm install
+
+# Start the development server
+npm start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Running the App
 
-## Learn more
+```bash
+# iOS Simulator
+npm run ios
 
-To learn more about developing your project with Expo, look at the following resources:
+# Android Emulator
+npm run android
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+# Web Browser
+npm run web
+```
 
-## Join the community
+## Project Structure
 
-Join our community of developers creating universal apps.
+```
+app/
+├── _layout.tsx           # Root layout with SQLite provider
+├── global.css            # Global styles
+├── (tabs)/
+│   ├── _layout.tsx       # Tab navigator configuration
+│   ├── index.tsx         # Home - Start workout
+│   ├── calendar.tsx      # Workout history
+│   ├── profile.tsx       # User profile & workout plans
+│   ├── edit-workout.tsx  # Create/edit workout plans
+│   └── edit-record.tsx   # Edit past workout records
+└── components/
+    └── workout-input/
+        ├── ExerciseCard.tsx
+        ├── SetRow.tsx
+        ├── NumberInput.tsx
+        ├── UnitToggle.tsx
+        └── types.ts
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Database Schema
+
+| Table | Description |
+|-------|-------------|
+| `Exercises` | Master list of exercises (name, muscle group, equipment type, isolation flag) |
+| `Workouts` | Named workout plans |
+| `Workout_Exercises` | Junction table linking workouts to exercises with ordering |
+| `Records` | Workout logs with date, sets, reps, weight tracking |
+| `users` | User profile data and preferences |
+
+## Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm start` | Start Expo development server |
+| `npm run ios` | Run on iOS Simulator |
+| `npm run android` | Run on Android Emulator |
+| `npm run web` | Run in web browser |
+| `npm run lint` | Run ESLint |
+
+## Design
+
+The app features a modern dark theme with:
+- Pure black backgrounds (`#000`)
+- Dark grey cards (`#1C1C1E`)
+- Silver/grey accents (`#A0A0A0`, `#6E6E73`)
+- Off-white text (`#F5F5F5`)
+
+## License
+
+MIT License
