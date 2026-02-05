@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Glog",
-    "slug": "fitness-app",
+    "slug": "glog-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/glog_logo.png",
@@ -13,13 +13,15 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.seungyoon.glog",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/glog_logo.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "package": "com.seungyoon7744.fitnessapp"
+      "predictiveBackGestureEnabled": false
+      
     },
     "web": {
       "bundler": "metro",

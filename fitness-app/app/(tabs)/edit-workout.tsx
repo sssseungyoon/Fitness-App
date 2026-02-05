@@ -1,5 +1,5 @@
 import { useSQLiteContext } from "expo-sqlite";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -223,6 +223,9 @@ export default function EditWorkout() {
   const [savedWorkouts, setSavedWorkouts] = useState<any[]>([]);
   const [editingWorkoutId, setEditingWorkoutId] = useState<number | null>(null);
 
+  const scrollViewRef = useRef<ScrollView>(null);
+  const editSectionY = useRef<number>(0);
+
   const fetchSavedWorkouts = async () => {
     try {
       const result = await db.getAllAsync(`
@@ -442,6 +445,11 @@ export default function EditWorkout() {
       })),
     };
     setWorkoutPlan([editingWorkout]);
+
+    // Scroll to the edit section after state updates
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: editSectionY.current, animated: true });
+    }, 100);
   };
 
   const handleOnSave = async () => {
@@ -528,7 +536,7 @@ export default function EditWorkout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.container}>
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <ScrollView ref={scrollViewRef} contentContainerStyle={styles.scrollContainer}>
           <Text style={{ color: "#6E6E73", fontSize: 13, fontWeight: "600", letterSpacing: 1, textTransform: "uppercase", marginBottom: 12 }}>Saved Plans</Text>
           {savedWorkouts.map((workout) => (
             <SavedPlanCard
@@ -538,6 +546,15 @@ export default function EditWorkout() {
               onEdit={handleEditWorkout}
             />
           ))}
+          <View
+            onLayout={(event) => {
+              editSectionY.current = event.nativeEvent.layout.y;
+            }}
+          >
+            <Text style={{ color: "#6E6E73", fontSize: 13, fontWeight: "600", letterSpacing: 1, textTransform: "uppercase", marginBottom: 12, marginTop: 8 }}>
+              {editingWorkoutId ? "Editing Workout" : "New Workout"}
+            </Text>
+          </View>
           {workoutPlan.map((workout) => (
             <View key={workout.rowId}>
               <WorkoutCard
